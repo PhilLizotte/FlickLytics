@@ -30,10 +30,12 @@ object index extends _root_.play.twirl.api.BaseScalaTemplate[play.twirl.api.Html
       {
 
 
-Seq[Any](format.raw/*2.1*/("""
-"""),_display_(/*3.2*/main("Welcome to Play")/*3.25*/ {_display_(Seq[Any](format.raw/*3.27*/("""
-  """),format.raw/*4.3*/("""<h1>Welcome to Play!</h1>
-""")))}),format.raw/*5.2*/("""
+Seq[Any](format.raw/*1.4*/("""
+
+"""),_display_(/*3.2*/main("Tab Title")/*3.19*/ {_display_(Seq[Any](format.raw/*3.21*/("""
+  """),format.raw/*4.3*/("""<h1>Page Header</h1>
+  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam sed mi sollicitudin, varius turpis pulvinar, lobortis magna. Etiam consectetur finibus mi at ornare. Pellentesque rhoncus erat ipsum, eget suscipit massa pulvinar ultrices. Nulla non elit ac elit feugiat egestas. Maecenas ac orci at mauris congue tempor. Duis tempor, erat et elementum commodo, sapien elit luctus massa, at auctor sapien ligula a sem. Nullam varius erat et libero scelerisque, id dignissim sem tincidunt. Integer luctus tellus a convallis tempor. Cras augue magna, rhoncus vitae iaculis non, varius ut nibh. Nam sodales lacus at ante ullamcorper porta. Ut tincidunt id nulla in lobortis. Maecenas placerat imperdiet urna vitae interdum. Cras turpis purus, pharetra sodales pharetra sit amet, pharetra sit amet mi. Integer erat odio, cursus ut libero nec, eleifend suscipit lacus.</p>
+""")))}),format.raw/*6.2*/("""
 """))
       }
     }
@@ -51,9 +53,9 @@ Seq[Any](format.raw/*2.1*/("""
               /*
                   -- GENERATED --
                   SOURCE: app/views/index.scala.html
-                  HASH: 924d763885a2f8304f30896eb19449c992f02a0a
-                  MATRIX: 938->1|1034->4|1061->6|1092->29|1131->31|1160->34|1216->61
-                  LINES: 28->1|33->2|34->3|34->3|34->3|35->4|36->5
+                  HASH: d936d0accb1587a536fef3dd147f612f3d03e432
+                  MATRIX: 938->1|1034->3|1064->8|1089->25|1128->27|1158->31|2080->924
+                  LINES: 28->1|33->1|35->3|35->3|35->3|36->4|38->6
                   -- GENERATED --
               */
           

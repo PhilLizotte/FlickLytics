@@ -35,7 +35,8 @@ object main extends _root_.play.twirl.api.BaseScalaTemplate[play.twirl.api.HtmlF
       {
 
 
-Seq[Any](format.raw/*8.1*/("""
+Seq[Any](format.raw/*7.32*/("""
+
 """),format.raw/*9.1*/("""<!DOCTYPE html>
 <html lang="en">
     <head>
@@ -45,10 +46,12 @@ Seq[Any](format.raw/*8.1*/("""
         <link rel="shortcut icon" type="image/png" href=""""),_display_(/*15.59*/routes/*15.65*/.Assets.versioned("images/favicon.png")),format.raw/*15.104*/("""">
     </head>
     <body>
-        """),format.raw/*19.32*/("""
-        """),_display_(/*20.10*/content),format.raw/*20.17*/("""
+        <script src=""""),_display_(/*18.23*/routes/*18.29*/.Assets.versioned("javascripts/main.js")),format.raw/*18.69*/("""" type="text/javascript"></script>
+        """),format.raw/*20.32*/("""
+        """),_display_(/*21.10*/content),format.raw/*21.17*/("""
+        """),format.raw/*22.9*/("""<button type="button" onclick="buttonPrompt()"> Generate Text Below:</button>
+        <p id="textGoesHere"></p>
 
-        """),format.raw/*22.9*/("""<script src=""""),_display_(/*22.23*/routes/*22.29*/.Assets.versioned("javascripts/main.js")),format.raw/*22.69*/("""" type="text/javascript"></script>
     </body>
 </html>
 """))
@@ -68,9 +71,9 @@ Seq[Any](format.raw/*8.1*/("""
               /*
                   -- GENERATED --
                   SOURCE: app/views/main.scala.html
-                  HASH: 07a4ed91d76a7d490059b5323d550961f25bbdf2
-                  MATRIX: 1203->260|1327->291|1354->292|1434->397|1470->406|1505->414|1531->419|1620->481|1635->487|1698->528|1786->589|1801->595|1862->634|1924->758|1961->768|1989->775|2026->785|2067->799|2082->805|2143->845
-                  LINES: 33->7|38->8|39->9|42->12|43->13|43->13|43->13|44->14|44->14|44->14|45->15|45->15|45->15|48->19|49->20|49->20|51->22|51->22|51->22|51->22
+                  HASH: 1848ae7445f146ea1da85d806ba48c9efadf8b60
+                  MATRIX: 1208->266|1333->296|1363->300|1446->408|1483->418|1518->426|1544->431|1634->494|1649->500|1712->541|1801->603|1816->609|1877->648|1955->699|1970->705|2031->745|2103->880|2141->891|2169->898|2206->908
+                  LINES: 33->7|38->7|40->9|43->12|44->13|44->13|44->13|45->14|45->14|45->14|46->15|46->15|46->15|49->18|49->18|49->18|50->20|51->21|51->21|52->22
                   -- GENERATED --
               */
           
