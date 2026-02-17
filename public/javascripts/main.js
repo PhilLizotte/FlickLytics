@@ -33,6 +33,49 @@ function buttonPrompt()
             par.innerHTML = text;
         })
         .catch(err => console.error(err));
+}
 
+function performSearch() {
+    const queryInput = document.getElementById("searchQuery");
+    const categorySelect = document.getElementById("searchCategory");
+    const resultsContainer = document.getElementById("resultsContainer");
 
+    if (!queryInput || !categorySelect || !resultsContainer) {
+        return;
+    }
+
+    const query = (queryInput.value || "").trim();
+    const category = (categorySelect.value || "").trim();
+
+    if (!query || !category) {
+        return;
+    }
+
+    const url = "/api/search?category=" + encodeURIComponent(category) + "&query=" + encodeURIComponent(query);
+
+    fetch(url)
+        .then(res => res.json())
+        .then(json => {
+            const block = document.createElement("div");
+            const header = document.createElement("div");
+            header.innerText = "Search: \"" + query + "\" (" + category + ")";
+            block.appendChild(header);
+
+            const list = document.createElement("ol");
+            const items = (json && json.results) ? json.results.slice(0, 10) : [];
+            for (let i = 0; i < items.length; i++) {
+                const li = document.createElement("li");
+                const item = items[i] || {};
+                li.innerText = item.title || item.name || item.original_name || "(no title)";
+                list.appendChild(li);
+            }
+            block.appendChild(list);
+
+            resultsContainer.prepend(block);
+
+            while (resultsContainer.children.length > 10) {
+                resultsContainer.removeChild(resultsContainer.lastElementChild);
+            }
+        })
+        .catch(err => console.error(err));
 }
