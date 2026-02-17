@@ -33,9 +33,18 @@ function performSearch() {
                 if (category === "person") {
                     const name = item.name || "(no name)";
 
+                    const idText = document.createElement("span");
+                    idText.innerText = "ID: " + (item.id !== undefined && item.id !== null ? item.id : "") + ", ";
+                    li.appendChild(idText);
+
                     const nameSpan = document.createElement("span");
-                    nameSpan.innerText = name + " ";
+                    nameSpan.innerText = name + ", ";
                     li.appendChild(nameSpan);
+
+                    const popularity = (item.popularity !== undefined && item.popularity !== null) ? item.popularity : "";
+                    const popSpan = document.createElement("span");
+                    popSpan.innerText = "Popularity: " + popularity + ", ";
+                    li.appendChild(popSpan);
 
                     const photoUrl = item.photoUrl || "";
                     if (photoUrl) {
@@ -51,7 +60,7 @@ function performSearch() {
                     const dept = item.known_for_department || "";
 
                     const infoSpan = document.createElement("span");
-                    infoSpan.innerText = "Gender: " + gender + ", Department: " + dept + " ";
+                    infoSpan.innerText = "Gender: " + gender + ", Department: " + dept + ", ";
                     li.appendChild(infoSpan);
 
                     const knownForUrl = item.knownForUrl || "";
@@ -65,6 +74,10 @@ function performSearch() {
                     }
                 } else {
                     const title = item.title || item.name || item.original_name || "(no title)";
+
+                    const idText = document.createElement("span");
+                    idText.innerText = "ID: " + (item.id !== undefined && item.id !== null ? item.id : "") + ", ";
+                    li.appendChild(idText);
 
                     const titleLink = document.createElement("a");
                     titleLink.href = item.detailsUrl || "";
@@ -81,11 +94,11 @@ function performSearch() {
 
                     const meta = document.createElement("span");
                     meta.innerText =
-                        " | Language: " + language +
-                        " | Genres: " + genres +
-                        " | Release Date: " + releaseDate +
-                        " | Popularity: " + popularity +
-                        " | Vote Average: " + voteAverage;
+                        ", Language: " + language +
+                        ", Genres: " + genres +
+                        ", Release Date: " + releaseDate +
+                        ", Popularity: " + popularity +
+                        ", Vote Average: " + voteAverage;
                     li.appendChild(meta);
                 }
                 list.appendChild(li);
