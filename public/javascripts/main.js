@@ -1,3 +1,6 @@
+import Inject from "javax.inject";
+import Configuration from "play";
+
 function performSearch() {
     const queryInput = document.getElementById("searchQuery");
     const categorySelect = document.getElementById("searchCategory");
@@ -19,6 +22,9 @@ function performSearch() {
     fetch(url)
         .then(res => res.json())
         .then(json => {
+            // So I can see json content
+            console.log(json);
+
             const block = document.createElement("div");
             const header = document.createElement("div");
             header.innerText = "Search: \"" + query + "\" (" + category + ")";
@@ -93,6 +99,12 @@ function performSearch() {
                     const voteAverage = (item.vote_average !== undefined && item.vote_average !== null) ? item.vote_average : "";
 
                     const meta = document.createElement("span");
+
+                    /*
+                    // Financial Performance Feature
+                    let movieJson = getMovieDetails(item.id);
+                     */
+
                     meta.innerText =
                         ", Language: " + language +
                         ", Genres: " + genres +
@@ -113,3 +125,18 @@ function performSearch() {
         })
         .catch(err => console.error(err));
 }
+
+/*
+async function getMovieDetails(movie_id) {
+    let conf = new Configuration();
+    const url = 'https://api.themoviedb.org/3/movie/' + encodeURIComponent(movie_id);
+    const options = {
+        method: 'GET',
+        headers: {accept: 'application/json', Authorization: 'Bearer ' + encodeURIComponent(tmdb.apiKey)}
+    };
+
+    return await fetch(url, options)
+        .then(res => res.json())
+        .catch(err => console.error(err));
+}
+*/
