@@ -63,7 +63,8 @@ function performSearch() {
                     infoSpan.innerText = "Gender: " + gender + ", Department: " + dept + ", ";
                     li.appendChild(infoSpan);
 
-                    const knownForUrl = item.knownForUrl || "";
+                    const personId = (item.id !== undefined && item.id !== null) ? item.id : "";
+                    const knownForUrl = personId ? ("/person/" + encodeURIComponent(personId) + "/known-for") : "";
                     if (knownForUrl) {
                         const knownForLink = document.createElement("a");
                         knownForLink.href = knownForUrl;

@@ -13,11 +13,17 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public class TmdbSearchService {
+    private static final long GENRE_CACHE_TTL_MILLIS = 24 * 60 * 60 * 1000L;
+
     private final WSClient ws;
     private final TmdbConfig tmdbConfig;
     private final ObjectMapper objectMapper;
+
+    private final ConcurrentMap<String, GenreCacheEntry> genreCache = new ConcurrentHashMap<>();
 
     @Inject
     public TmdbSearchService(WSClient ws, TmdbConfig tmdbConfig) {
@@ -61,6 +67,11 @@ public class TmdbSearchService {
     }
 
     private CompletionStage<Map<Integer, String>> fetchGenreMap(String kind) {
+        GenreCacheEntry cached = genreCache.get(kind);
+        if (cached != null && !cached.isExpired()) {
+            return CompletableFuture.completedFuture(cached.map);
+        }
+
         String url = tmdbConfig.getBaseUrl() + "/genre/" + kind + "/list";
         WSRequest request = ws.url(url)
                 .addQueryParameter("api_key", tmdbConfig.getApiKey())
@@ -79,8 +90,24 @@ public class TmdbSearchService {
                     }
                 }
             }
+
+            genreCache.put(kind, new GenreCacheEntry(Map.copyOf(map), System.currentTimeMillis()));
             return map;
         });
+    }
+
+    private static class GenreCacheEntry {
+        private final Map<Integer, String> map;
+        private final long fetchedAtMillis;
+
+        private GenreCacheEntry(Map<Integer, String> map, long fetchedAtMillis) {
+            this.map = map;
+            this.fetchedAtMillis = fetchedAtMillis;
+        }
+
+        private boolean isExpired() {
+            return System.currentTimeMillis() - fetchedAtMillis > GENRE_CACHE_TTL_MILLIS;
+        }
     }
 
     private JsonNode enrichResults(String category, JsonNode searchJson, Map<Integer, String> genreMap) {

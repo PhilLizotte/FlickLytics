@@ -1,5 +1,7 @@
 package models.dto;
 
+
+//TODO: delete the file if not used
 public class MovieDetailsDTO {
 
     private String name;
