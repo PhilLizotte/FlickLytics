@@ -14,6 +14,8 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
+import java.util.ArrayList;
+
 public class TmdbSearchService {
     private final WSClient ws;
     private final TmdbConfig tmdbConfig;
@@ -83,6 +85,29 @@ public class TmdbSearchService {
         });
     }
 
+    private CompletionStage<ArrayList<String>> fetchReviewsList(String kind, int id) {
+    String url = tmdbConfig.getBaseUrl() + "/" + kind + "/" + id + "/reviews";
+    // BUG:: for some reason, this is only fetching the first 20 reviews, not all of them. 
+    WSRequest request = ws.url(url)
+        .addQueryParameter("api_key", tmdbConfig.getApiKey())
+        .addQueryParameter("language", "en-us");
+
+        return request.get().thenApply(resp -> {
+            JsonNode json = resp.asJson();
+            ArrayList<String> list = new ArrayList<String>();
+            
+            JsonNode reviewsNode = json.get("results");
+            if (reviewsNode != null && reviewsNode.isArray())
+            {
+                for (JsonNode r : reviewsNode)
+                {
+                    list.add(r.get("content").asText());
+                }
+            }
+            return list;
+        });
+    }
+
     private JsonNode enrichResults(String category, JsonNode searchJson, Map<Integer, String> genreMap) {
         if (searchJson == null || !searchJson.isObject()) {
             return searchJson;
@@ -103,9 +128,25 @@ public class TmdbSearchService {
 
             int id = o.hasNonNull("id") ? o.get("id").asInt() : -1;
 
+            CompletionStage<ArrayList<String>> reviewListStage;
+
             if ("movie".equalsIgnoreCase(category)) {
                 o.put("detailsUrl", "https://www.themoviedb.org/movie/" + id);
                 addGenreNames(o, genreMap);
+                reviewListStage = fetchReviewsList("movie", id);
+
+                // HACK:: If anyone knows of a better way to get at the results here, that would be super greatly appreciated. 
+                // I spent a couple hours trying to figure it out and failed. 
+                // A big difference between the reviews and the genres is that I need the movie/tv ID to get the reviews, 
+                // so I can't do it the same way it's done for genres as the ID is only fetched as part of the enrichment process. 
+                try {
+                    o.put("reviews", nodifyReviewsList(reviewListStage.toCompletableFuture().get()));
+                }
+                catch (Exception e) {
+                    System.err.println("Error when trying to complete the promise for reviews.");
+                }
+
+
                 normalizeCommonMovieTvFields(o, true);
             } else if ("tv".equalsIgnoreCase(category)) {
                 o.put("detailsUrl", "https://www.themoviedb.org/tv/" + id);
@@ -157,6 +198,20 @@ public class TmdbSearchService {
         o.set("genres", names);
     }
 
+    // TODO:: Instead of nodifying the reviews list, maybe I should do the parsing here as well instead of on the javascript side?
+    private ArrayNode nodifyReviewsList(ArrayList<String> reviewsList)
+    {
+        ArrayNode revs = objectMapper.createArrayNode();
+        if (reviewsList.size() > 0)
+        {
+            for (String rev : reviewsList)
+            {
+                revs.add(rev);
+            }
+        }
+        return revs;
+    }
+ 
     private String profileUrl(ObjectNode o) {
         JsonNode pathNode = o.get("profile_path");
         if (pathNode == null || pathNode.isNull() || !pathNode.isTextual()) {
