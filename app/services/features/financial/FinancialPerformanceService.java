@@ -20,11 +20,11 @@ public class FinancialPerformanceService {
     }
 
     public CompletionStage<JsonNode> searchMovieById(int id) {
-
+        
         String url = tmdbConfig.getBaseUrl() + "/movie/" + id;
 
         return ws.url(url)
-                .addHeader("Authorization", "Bearer " + tmdbConfig.getApiKey())
+                .addHeader("Authorization", "Bearer " + tmdbConfig.getRaToken())
                 .get()
                 .thenApply(WSResponse::asJson);
     }

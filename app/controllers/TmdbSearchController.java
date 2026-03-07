@@ -34,6 +34,7 @@ public class TmdbSearchController extends Controller {
     }
     
     public CompletionStage<Result> searchMovieById(int id) {
+        
         return fpService.searchMovieById(id)
                 .thenApply((JsonNode json) -> ok(json))
                 .exceptionally(ex -> badRequest("Unknown movie ID"));
