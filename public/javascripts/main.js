@@ -143,19 +143,23 @@ function performSearch() {
                         ) ?
                             item.vote_average
                         :   "";
+                    const reviewsSentiment = 
+                        (
+                            item.reviews !== undefined &&
+                            item.reviews !== null
+                        ) ?
+                            item.reviews
+                        :   "";
 
                     const meta = document.createElement("span");
                     meta.innerText =
-                        ", Language: " +
-                        language +
-                        ", Genres: " +
-                        genres +
-                        ", Release Date: " +
-                        releaseDate +
-                        ", Popularity: " +
-                        popularity +
-                        ", Vote Average: " +
-                        voteAverage;
+                        ", Language: " + language +
+                        ", Genres: " + genres +
+                        ", Release Date: " + releaseDate +
+                        ", Popularity: " + popularity +
+                        ", Vote Average: " + voteAverage +
+                        ", Reviews sentiment: " + reviewsSentiment
+                        ;
                     li.appendChild(meta);
                 }
                 list.appendChild(li);

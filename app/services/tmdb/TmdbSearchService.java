@@ -115,25 +115,40 @@ public class TmdbSearchService {
 
             if ("movie".equalsIgnoreCase(category)) {
                 o.put("detailsUrl", "https://www.themoviedb.org/movie/" + id);
-                addGenreNames(o, genreMap);
-                reviewListStage = reviewService.fetchReviewsList("movie", id);
 
+                // GENRES
+                addGenreNames(o, genreMap);
+
+                // REVIEWS
                 // HACK:: If anyone knows of a better way to get at the results here, that would be super greatly appreciated. 
                 // I spent a couple hours trying to figure it out and failed. 
                 // A big difference between the reviews and the genres is that I need the movie/tv ID to get the reviews, 
                 // so I can't do it the same way it's done for genres as the ID is only fetched as part of the enrichment process. 
+                reviewListStage = reviewService.fetchReviewsList("movie", id);
                 try {
                     o.put("reviews", reviewService.extractSentiment(reviewListStage.toCompletableFuture().get()));
                 }
                 catch (Exception e) {
-                    System.err.println("Error when trying to complete the promise for reviews.");
+                    System.err.println("Error when trying to complete the promise for reviews (movies).");
                 }
 
 
                 normalizeCommonMovieTvFields(o, true);
             } else if ("tv".equalsIgnoreCase(category)) {
                 o.put("detailsUrl", "https://www.themoviedb.org/tv/" + id);
+
+                // GENRES
                 addGenreNames(o, genreMap);
+                
+                // REVIEWS
+                reviewListStage = reviewService.fetchReviewsList("tv", id);
+                try {
+                    o.put("reviews", reviewService.extractSentiment(reviewListStage.toCompletableFuture().get()));
+                }
+                catch (Exception e) {
+                    System.err.println("Error when trying to complete the promise for reviews (movies).");
+                }
+
                 normalizeCommonMovieTvFields(o, false);
             } else if ("person".equalsIgnoreCase(category)) {
                 o.put("photoUrl", profileUrl(o));
