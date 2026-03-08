@@ -16,16 +16,22 @@ import java.util.concurrent.CompletionStage;
 
 import java.util.ArrayList;
 
+import services.features.reviews.ReviewSentimentService;
+
 public class TmdbSearchService {
     private final WSClient ws;
     private final TmdbConfig tmdbConfig;
     private final ObjectMapper objectMapper;
+
+    private final ReviewSentimentService reviewService;
 
     @Inject
     public TmdbSearchService(WSClient ws, TmdbConfig tmdbConfig) {
         this.ws = ws;
         this.tmdbConfig = tmdbConfig;
         this.objectMapper = Json.mapper();
+
+        this.reviewService = new ReviewSentimentService(ws, tmdbConfig);
     }
 
     public CompletionStage<JsonNode> search(String category, String query) {
@@ -85,54 +91,6 @@ public class TmdbSearchService {
         });
     }
 
-    private CompletionStage<ArrayList<String>> fetchReviewsList(String kind, int id) {
-        String url = tmdbConfig.getBaseUrl() + "/" + kind + "/" + id + "/reviews";
-        WSRequest request1 = ws.url(url)
-            .addQueryParameter("api_key", tmdbConfig.getApiKey())
-            .addQueryParameter("language", "en-us")
-            .addQueryParameter("page", "1");
-        
-        WSRequest request2 = ws.url(url)
-            .addQueryParameter("api_key", tmdbConfig.getApiKey())
-            .addQueryParameter("language", "en-us")
-            .addQueryParameter("page", "2");
-        
-        WSRequest request3 = ws.url(url)
-            .addQueryParameter("api_key", tmdbConfig.getApiKey())
-            .addQueryParameter("language", "en-us")
-            .addQueryParameter("page", "3");
-
-
-        return request1.get().thenCompose(resp1 -> 
-            request2.get().thenCompose(resp2 -> 
-                request3.get().thenApply(resp3 -> {
-                    ArrayList<String> list = new ArrayList<String>();
-                    JsonNode res1 = resp1.asJson().get("results");
-                    JsonNode res2 = resp2.asJson().get("results");
-                    JsonNode res3 = resp3.asJson().get("results");
-
-                    if (res1 != null && res1.isArray())
-                        for (JsonNode r : res1)
-                            list.add(r.get("content").asText());
-
-                    if (res2 != null && res2.isArray())
-                        for (JsonNode r : res2)
-                            list.add(r.get("content").asText());
-
-                    if (res3 != null && res3.isArray())
-                        for (JsonNode r : res3)
-                        {
-                            list.add(r.get("content").asText());
-                            if (list.size() == 50)
-                                break;
-                        }
-                    System.out.print(list.size() + ", ");
-                    return list;
-                })
-            )
-        );
-    }
-
     private JsonNode enrichResults(String category, JsonNode searchJson, Map<Integer, String> genreMap) {
         if (searchJson == null || !searchJson.isObject()) {
             return searchJson;
@@ -158,14 +116,14 @@ public class TmdbSearchService {
             if ("movie".equalsIgnoreCase(category)) {
                 o.put("detailsUrl", "https://www.themoviedb.org/movie/" + id);
                 addGenreNames(o, genreMap);
-                reviewListStage = fetchReviewsList("movie", id);
+                reviewListStage = reviewService.fetchReviewsList("movie", id);
 
                 // HACK:: If anyone knows of a better way to get at the results here, that would be super greatly appreciated. 
                 // I spent a couple hours trying to figure it out and failed. 
                 // A big difference between the reviews and the genres is that I need the movie/tv ID to get the reviews, 
                 // so I can't do it the same way it's done for genres as the ID is only fetched as part of the enrichment process. 
                 try {
-                    o.put("reviews", nodifyReviewsList(reviewListStage.toCompletableFuture().get()));
+                    o.put("reviews", reviewService.extractSentiment(reviewListStage.toCompletableFuture().get()));
                 }
                 catch (Exception e) {
                     System.err.println("Error when trying to complete the promise for reviews.");
@@ -221,20 +179,6 @@ public class TmdbSearchService {
             }
         }
         o.set("genres", names);
-    }
-
-    // TODO:: Instead of nodifying the reviews list, maybe I should do the parsing here as well instead of on the javascript side?
-    private ArrayNode nodifyReviewsList(ArrayList<String> reviewsList)
-    {
-        ArrayNode revs = objectMapper.createArrayNode();
-        if (reviewsList.size() > 0)
-        {
-            for (String rev : reviewsList)
-            {
-                revs.add(rev);
-            }
-        }
-        return revs;
     }
  
     private String profileUrl(ObjectNode o) {
