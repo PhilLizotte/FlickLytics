@@ -31,7 +31,7 @@ public class TmdbMapper {
                 movieDTO.tagline,
                 movieDTO.vote_average,
                 movieDTO.vote_count
-        )
+        );
     }
 
     public static TVShow toTVShow(TVShowDTO tvShowDTO) {

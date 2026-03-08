@@ -20,7 +20,6 @@ public class Creator {
         this.name = name;
         this.gender = gender;
         this.profile_path = profile_path;
-        );
     }
 
 
