@@ -1,38 +1,116 @@
-function buttonPrompt()
-{
-    // IMPORTANT: To get this to work yourself, you may need
-    //   to use your TMDb API Read Access Token (found in your
-    //   TMDb account > "API subscription" page)
+function performSearch() {
+    const queryInput = document.getElementById("searchQuery");
+    const categorySelect = document.getElementById("searchCategory");
+    const resultsContainer = document.getElementById("resultsContainer");
 
-    // View the following page to generate your own requests:
-    //   https://developer.themoviedb.org/reference/movie-popular-list
+    if (!queryInput || !categorySelect || !resultsContainer) {
+        return;
+    }
 
-    const url = 'https://api.themoviedb.org/3/movie/popular?language=en-US&page=1';
-    const options = {
-        method: 'GET',
-        headers: {
-            accept: 'application/json',
-            Authorization: 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIyZjhkNzFmYjkxMzY3ZTQxMDI4NDc0NzVmNjY2YWEyNSIsIm5iZiI6MTc2OTk2MzY0My4xNzYsInN1YiI6IjY5N2Y4MDdiZTA2MzEzNTVkYTZmNzY1YiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.dUsuwgFuTaQIz_X2UcPpMOchaPIhELZ7UyP7I4SKt7c'
-        }
-    };
+    const query = (queryInput.value || "").trim();
+    const category = (categorySelect.value || "").trim();
 
-    fetch(url, options)
+    if (!query || !category) {
+        return;
+    }
+
+    const url = "/api/search?category=" + encodeURIComponent(category) + "&query=" + encodeURIComponent(query);
+
+    fetch(url)
         .then(res => res.json())
         .then(json => {
-            console.log(json)
+            const block = document.createElement("div");
+            const header = document.createElement("div");
+            header.innerText = "Search: \"" + query + "\" (" + category + ")";
+            block.appendChild(header);
 
-            let text = "Title: <i>";
-            text += json.results[0].original_title
-            text += "</i>, Language: <i>"
-            text += json.results[0].original_language
-            text += "</i>, Average vote score: <i>"
-            text += json.results[0].vote_average
-            text += "</i>"
+            const list = document.createElement("ol");
+            const items = (json && json.results) ? json.results.slice(0, 10) : [];
+            for (let i = 0; i < items.length; i++) {
+                const li = document.createElement("li");
+                const item = items[i] || {};
 
-            let par = document.getElementById("textGoesHere");
-            par.innerHTML = text;
+                if (category === "person") {
+                    const name = item.name || "(no name)";
+
+                    const idText = document.createElement("span");
+                    idText.innerText = "ID: " + (item.id !== undefined && item.id !== null ? item.id : "") + ", ";
+                    li.appendChild(idText);
+
+                    const nameSpan = document.createElement("span");
+                    nameSpan.innerText = name + ", ";
+                    li.appendChild(nameSpan);
+
+                    const popularity = (item.popularity !== undefined && item.popularity !== null) ? item.popularity : "";
+                    const popSpan = document.createElement("span");
+                    popSpan.innerText = "Popularity: " + popularity + ", ";
+                    li.appendChild(popSpan);
+
+                    const photoUrl = item.photoUrl || "";
+                    if (photoUrl) {
+                        const photoLink = document.createElement("a");
+                        photoLink.href = photoUrl;
+                        photoLink.target = "_blank";
+                        photoLink.rel = "noopener noreferrer";
+                        photoLink.innerText = "[Photo] ";
+                        li.appendChild(photoLink);
+                    }
+
+                    const gender = (item.gender === 1) ? "Female" : (item.gender === 2) ? "Male" : "Other/Unknown";
+                    const dept = item.known_for_department || "";
+
+                    const infoSpan = document.createElement("span");
+                    infoSpan.innerText = "Gender: " + gender + ", Department: " + dept + ", ";
+                    li.appendChild(infoSpan);
+
+                    const personId = (item.id !== undefined && item.id !== null) ? item.id : "";
+                    const knownForUrl = personId ? ("/person/" + encodeURIComponent(personId) + "/known-for") : "";
+                    if (knownForUrl) {
+                        const knownForLink = document.createElement("a");
+                        knownForLink.href = knownForUrl;
+                        knownForLink.target = "_blank";
+                        knownForLink.rel = "noopener noreferrer";
+                        knownForLink.innerText = "Known for";
+                        li.appendChild(knownForLink);
+                    }
+                } else {
+                    const title = item.title || item.name || item.original_name || "(no title)";
+
+                    const idText = document.createElement("span");
+                    idText.innerText = "ID: " + (item.id !== undefined && item.id !== null ? item.id : "") + ", ";
+                    li.appendChild(idText);
+
+                    const titleLink = document.createElement("a");
+                    titleLink.href = item.detailsUrl || "";
+                    titleLink.target = "_blank";
+                    titleLink.rel = "noopener noreferrer";
+                    titleLink.innerText = title;
+                    li.appendChild(titleLink);
+
+                    const language = item.language || item.original_language || "";
+                    const genres = Array.isArray(item.genres) ? item.genres.join(", ") : "";
+                    const releaseDate = item.releaseDate || item.release_date || item.first_air_date || "";
+                    const popularity = (item.popularity !== undefined && item.popularity !== null) ? item.popularity : "";
+                    const voteAverage = (item.vote_average !== undefined && item.vote_average !== null) ? item.vote_average : "";
+
+                    const meta = document.createElement("span");
+                    meta.innerText =
+                        ", Language: " + language +
+                        ", Genres: " + genres +
+                        ", Release Date: " + releaseDate +
+                        ", Popularity: " + popularity +
+                        ", Vote Average: " + voteAverage;
+                    li.appendChild(meta);
+                }
+                list.appendChild(li);
+            }
+            block.appendChild(list);
+
+            resultsContainer.prepend(block);
+
+            while (resultsContainer.children.length > 10) {
+                resultsContainer.removeChild(resultsContainer.lastElementChild);
+            }
         })
         .catch(err => console.error(err));
-
-
 }
