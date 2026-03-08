@@ -1,0 +1,13 @@
+@(tvShow: models.dto.TVShowDTO, readingScore: Double, gradeLevel: Double)
+<h1>@tvShow.name</h1>
+
+<p><b>Overview:</b></p>
+<p>@tvShow.overview</p>
+
+<p><b>Popularity:</b> @tvShow.popularity</p>
+<p><b>Vote Average:</b> @tvShow.vote_average</p>
+
+<h2>Readability</h2>
+
+<p>Flesch Reading Score: @readingScore</p>
+<p>Flesch-Kincaid Grade Level: @gradeLevel</p>

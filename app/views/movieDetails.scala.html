@@ -1,0 +1,14 @@
+@(movie: models.dto.MovieDTO, readingScore: Double, gradeLevel: Double)
+<h1>@movie.title</h1>
+
+<p><b>Overview:</b></p>
+<p>@movie.overview</p>
+
+<p><b>Release Date:</b> @movie.release_date</p>
+<p><b>Popularity:</b> @movie.popularity</p>
+<p><b>Vote Average:</b> @movie.vote_average</p>
+
+<h2>Readability</h2>
+
+<p>Flesch Reading Score: @readingScore</p>
+<p>Flesch-Kincaid Grade Level: @gradeLevel</p>
