@@ -5,7 +5,6 @@ import models.domain.ProductionCompany;
 import models.domain.SpokenLanguage;
 
 import java.time.LocalDate;
-import java.util.Date;
 import java.util.List;
 
 /**
@@ -17,12 +16,11 @@ import java.util.List;
 public class MovieDTO {
     public boolean adult;
     public String backdrop_path;
-    public boolean belongs_to_collection;
     public long budget;
     public List<Genre> genres;
     public String homepage;
     public int id;
-    public int imdb_id;
+    public String imdb_id;
     public String original_language;
     public String original_title;
     public String overview;

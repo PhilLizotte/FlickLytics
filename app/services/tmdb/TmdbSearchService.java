@@ -5,10 +5,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.inject.Inject;
+import models.dto.MovieDTO;
+import models.dto.TVShowDTO;
 import play.libs.Json;
 import play.libs.ws.WSClient;
 import play.libs.ws.WSRequest;
 
+import javax.xml.transform.Result;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -94,6 +97,28 @@ public class TmdbSearchService {
             genreCache.put(kind, new GenreCacheEntry(Map.copyOf(map), System.currentTimeMillis()));
             return map;
         });
+    }
+
+    public CompletionStage<MovieDTO> movieDetails(int id) {
+        String url = tmdbConfig.getBaseUrl() + "/movie/" + id;
+        WSRequest request = ws.url(url)
+                .addQueryParameter("api_key", tmdbConfig.getApiKey())
+                .addQueryParameter("language", "en-US");
+
+        return request.get()
+                .thenApply(response ->
+                        Json.fromJson(response.asJson(), MovieDTO.class));
+    }
+
+    public CompletionStage<TVShowDTO> tvDetails(int id) {
+        String url = tmdbConfig.getBaseUrl() + "/tv/" + id;
+        WSRequest request = ws.url(url)
+                .addQueryParameter("api_key", tmdbConfig.getApiKey())
+                .addQueryParameter("language", "en-US");
+
+        return request.get()
+                .thenApply(response ->
+                        Json.fromJson(response.asJson(), TVShowDTO.class));
     }
 
     private static class GenreCacheEntry {

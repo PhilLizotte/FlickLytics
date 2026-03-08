@@ -8,16 +8,20 @@ import play.mvc.Result;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import services.features.personstats.PersonStatsService;
+import services.features.readability.ReadabilityService;
 import services.tmdb.TmdbSearchService;
 
 public class TmdbSearchController extends Controller {
     private final TmdbSearchService tmdbSearchService;
     private final PersonStatsService personStatsService;
+    private final ReadabilityService readabilityService;
 
     @Inject
-    public TmdbSearchController(TmdbSearchService tmdbSearchService, PersonStatsService personStatsService) {
+    public TmdbSearchController(TmdbSearchService tmdbSearchService, PersonStatsService personStatsService,
+                                ReadabilityService readabilityService) {
         this.tmdbSearchService = tmdbSearchService;
         this.personStatsService = personStatsService;
+        this.readabilityService = readabilityService;
     }
 
     public Result index() {
@@ -41,4 +45,41 @@ public class TmdbSearchController extends Controller {
                 .thenApply((JsonNode json) -> ok(json))
                 .exceptionally(ex -> badRequest("Invalid category"));
     }
+
+    // @author: aliiimaher
+    public CompletionStage<Result> movieDetails(Integer id) {
+        return tmdbSearchService.movieDetails(id)
+                .thenApply(movieDTO -> {
+                    double readingScore =
+                            readabilityService.calculateFleschReaddingEase(movieDTO.overview);
+
+                    double gradeLevel =
+                            readabilityService.calculateFleschKincaidGradeLevel(movieDTO.overview);
+
+                    return ok(views.html.movieDetails.render(
+                            movieDTO,
+                            readingScore,
+                            gradeLevel
+                    ));
+                });
+    }
+
+    public CompletionStage<Result> tvDetails(Integer id) {
+        return tmdbSearchService.tvDetails(id)
+                .thenApply(tvShowDTO -> {
+                    double readingScore =
+                            readabilityService.calculateFleschReaddingEase(tvShowDTO.overview);
+
+
+                    double gradeLevel =
+                            readabilityService.calculateFleschKincaidGradeLevel(tvShowDTO.overview);
+
+                    return ok(views.html.tvDetails.render(
+                            tvShowDTO,
+                            readingScore,
+                            gradeLevel
+                    ));
+                });
+    }
+
 }

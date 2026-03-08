@@ -41,8 +41,11 @@ public class ReadabilityService {
     }
 
     private int countWords (String text) {
-        String[] words = text.trim().split("\\s+");
-        return words.length;
+        if (text != null) {
+            String[] words = text.trim().split("\\s+");
+            return words.length;
+        }
+        return 0;
     }
 
     private int countSentences (String text) {

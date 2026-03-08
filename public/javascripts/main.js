@@ -101,6 +101,11 @@ function performSearch() {
                         ", Popularity: " + popularity +
                         ", Vote Average: " + voteAverage;
                     li.appendChild(meta);
+
+                    const singlePageUrl = document.createElement("a");
+                    singlePageUrl.innerText = ", link to this item";
+                    singlePageUrl.href = "tv" === (category) ? "/tv/" + item.id : "/movie/" + item.id;
+                    li.appendChild(singlePageUrl)
                 }
                 list.appendChild(li);
             }

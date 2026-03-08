@@ -17,7 +17,7 @@ public class TVShowDTO {
     public boolean adult;
     public String backdrop_path;
     public List<Creator> created_by;
-    public int episode_run_time;
+    public int[] episode_run_time;
     public LocalDate first_air_date;
     public List<Genre> genres;
     public String homepage;
