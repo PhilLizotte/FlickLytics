@@ -1,12 +1,12 @@
-@(movie: models.dto.MovieDTO, readingScore: Double, gradeLevel: Double)
-<h1>@movie.title</h1>
+@(movie: models.domain.Movie, readingScore: Double, gradeLevel: Double)
+<h1>@movie.getName</h1>
 
 <p><b>Overview:</b></p>
-<p>@movie.overview</p>
+<p>@movie.getOverview</p>
 
-<p><b>Release Date:</b> @movie.release_date</p>
-<p><b>Popularity:</b> @movie.popularity</p>
-<p><b>Vote Average:</b> @movie.vote_average</p>
+<p><b>Release Date:</b> @movie.getReleaseDate</p>
+<p><b>Popularity:</b> @movie.getPopularity</p>
+<p><b>Vote Average:</b> @movie.getVoteAverage</p>
 
 <h2>Readability</h2>
 

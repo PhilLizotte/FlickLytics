@@ -49,15 +49,15 @@ public class TmdbSearchController extends Controller {
     // @author: aliiimaher
     public CompletionStage<Result> movieDetails(Integer id) {
         return tmdbSearchService.movieDetails(id)
-                .thenApply(movieDTO -> {
+                .thenApply(movie -> {
                     double readingScore =
-                            readabilityService.calculateFleschReaddingEase(movieDTO.overview);
+                            readabilityService.calculateFleschReaddingEase(movie.getOverview());
 
                     double gradeLevel =
-                            readabilityService.calculateFleschKincaidGradeLevel(movieDTO.overview);
+                            readabilityService.calculateFleschKincaidGradeLevel(movie.getOverview());
 
                     return ok(views.html.movieDetails.render(
-                            movieDTO,
+                            movie,
                             readingScore,
                             gradeLevel
                     ));
@@ -68,11 +68,11 @@ public class TmdbSearchController extends Controller {
         return tmdbSearchService.tvDetails(id)
                 .thenApply(tvShowDTO -> {
                     double readingScore =
-                            readabilityService.calculateFleschReaddingEase(tvShowDTO.overview);
+                            readabilityService.calculateFleschReaddingEase(tvShowDTO.getOverview());
 
 
                     double gradeLevel =
-                            readabilityService.calculateFleschKincaidGradeLevel(tvShowDTO.overview);
+                            readabilityService.calculateFleschKincaidGradeLevel(tvShowDTO.getOverview());
 
                     return ok(views.html.tvDetails.render(
                             tvShowDTO,

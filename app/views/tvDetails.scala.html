@@ -1,11 +1,11 @@
-@(tvShow: models.dto.TVShowDTO, readingScore: Double, gradeLevel: Double)
-<h1>@tvShow.name</h1>
+@(tvShow: models.domain.TVShow, readingScore: Double, gradeLevel: Double)
+<h1>@tvShow.getName</h1>
 
 <p><b>Overview:</b></p>
-<p>@tvShow.overview</p>
+<p>@tvShow.getOverview</p>
 
-<p><b>Popularity:</b> @tvShow.popularity</p>
-<p><b>Vote Average:</b> @tvShow.vote_average</p>
+<p><b>Popularity:</b> @tvShow.getPopularity</p>
+<p><b>Vote Average:</b> @tvShow.getVoteAverage</p>
 
 <h2>Readability</h2>
 
