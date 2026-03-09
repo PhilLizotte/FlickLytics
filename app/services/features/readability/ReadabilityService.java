@@ -4,7 +4,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Service for calculating readability scores.
+ * Individual task.
+ * Service for calculating readability scores. 
  *
  * @author Ali Maher
  */
@@ -41,19 +42,28 @@ public class ReadabilityService {
     }
 
     private int countWords (String text) {
-        if (text != null) {
-            String[] words = text.trim().split("\\s+");
-            return words.length;
+        if (text == null || text.trim().isEmpty()) {
+            return 0;
         }
-        return 0;
+
+        String[] words = text.trim().split("\\s+");
+        return words.length;
     }
 
     private int countSentences (String text) {
+        if (text == null || text.trim().isEmpty()) {
+            return 0;
+        }
+
         String[] sentences = text.split("[.!?]+");
         return sentences.length;
     }
 
     private int countSyllables (String text) {
+        if (text == null || text.trim().isEmpty()) {
+            return 0;
+        }
+
         text = text.toLowerCase().replaceAll("[^a-z]", "");
 
         int count = 0;
