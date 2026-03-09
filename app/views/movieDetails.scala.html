@@ -1,14 +1,46 @@
 @(movie: models.domain.Movie, readingScore: Double, gradeLevel: Double)
-<h1>@movie.getName</h1>
 
-<p><b>Overview:</b></p>
-<p>@movie.getOverview</p>
+<link rel="stylesheet" href='@routes.Assets.versioned("stylesheets/movie.css")'>
 
-<p><b>Release Date:</b> @movie.getReleaseDate</p>
-<p><b>Popularity:</b> @movie.getPopularity</p>
-<p><b>Vote Average:</b> @movie.getVoteAverage</p>
+<div class="movie-container">
 
-<h2>Readability</h2>
+    <div class="poster">
+        <img src="https://image.tmdb.org/t/p/w500@movie.getPosterPath" alt="@movie.getName">
+    </div>
 
-<p>Flesch Reading Score: @readingScore</p>
-<p>Flesch-Kincaid Grade Level: @gradeLevel</p>
+    <div class="movie-info">
+
+        <h1>@movie.getName</h1>
+
+        <p class="tagline">@movie.getTagline</p>
+
+        <p><b>Overview:</b></p>
+        <p>@movie.getOverview</p>
+
+        <p><b>Release Date:</b> @movie.getReleaseDate</p>
+        <p><b>Genres:</b> @movie.getGenres.map(_.getName).mkString(", ")</p>
+
+        <p>
+            <b>Home Page:</b>
+            <a href="@movie.getHomepage.replace("paramountmovies", "paramountpictures")">click me :)</a>
+        </p>
+
+        <p><b>Popularity:</b> @movie.getPopularity</p>
+        <p><b>Production companies:</b> @movie.getProductionCompanies.map(_.getName).mkString(", ")</p>
+        <p><b>Revenue:</b> $@movie.getRevenue</p>
+        <p><b>Runtime:</b> @movie.getRuntime min</p>
+        <p><b>Languages:</b> @movie.getSpokenLanguages.map(_.getName).mkString(", ")</p>
+        <p><b>Status:</b> @movie.getStatus</p>
+
+        <p><b>Vote Average:</b> ⭐ @movie.getVoteAverage</p>
+        <p><b>Vote Count:</b> @movie.getVoteCount</p>
+
+        <div class="readability">
+            <h2>Readability</h2>
+            <p>Flesch Reading Score: @readingScore</p>
+            <p>Flesch-Kincaid Grade Level: @gradeLevel</p>
+        </div>
+
+    </div>
+
+</div>

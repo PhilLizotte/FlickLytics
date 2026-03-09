@@ -1,13 +1,56 @@
 @(tvShow: models.domain.TVShow, readingScore: Double, gradeLevel: Double)
-<h1>@tvShow.getName</h1>
 
-<p><b>Overview:</b></p>
-<p>@tvShow.getOverview</p>
+<link rel="stylesheet" href='@routes.Assets.versioned("stylesheets/tvShow.css")'>
 
-<p><b>Popularity:</b> @tvShow.getPopularity</p>
-<p><b>Vote Average:</b> @tvShow.getVoteAverage</p>
+<div class="tv-page">
 
-<h2>Readability</h2>
+    <div class="poster">
+        <img src="https://image.tmdb.org/t/p/w500@tvShow.getPosterPath" alt="@tvShow.getName">
+    </div>
 
-<p>Flesch Reading Score: @readingScore</p>
-<p>Flesch-Kincaid Grade Level: @gradeLevel</p>
+    <div class="tv-info">
+
+        <h1>@tvShow.getName</h1>
+
+        <p class="tagline">@tvShow.getTagline</p>
+
+        <p><b>Overview:</b></p>
+        <p>@tvShow.getOverview</p>
+
+        <p><b>First Air Date:</b> @tvShow.getFirstAirDate</p>
+        <p><b>Last Air Date:</b> @tvShow.getLastAirDate</p>
+
+        <p><b>Popularity:</b> @tvShow.getPopularity</p>
+
+        <p><b>Genres:</b> @tvShow.getGenres.map(_.getName).mkString(", ")</p>
+
+        <p>
+            <b>Home Page:</b>
+            @if(tvShow.getHomepage != null && !tvShow.getHomepage.isEmpty) {
+                <a href="@tvShow.getHomepage.replace("paramountmovies", "paramountpictures")">click me :)</a>
+            } else {
+                <span>N/A</span>
+            }
+        </p>
+
+        <p><b>Episodes:</b> @tvShow.getNumberOfEpisodes</p>
+        <p><b>Seasons:</b> @tvShow.getNumberOfSeasons</p>
+
+        <p><b>Networks:</b> @tvShow.getNetworks.map(_.getName).mkString(", ")</p>
+
+        <p><b>Status:</b> @tvShow.getStatus</p>
+
+        <p><b>Type:</b> @tvShow.getType</p>
+
+        <p><b>Vote Average:</b> ⭐ @tvShow.getVoteAverage</p>
+        <p><b>Vote Count:</b> @tvShow.getVoteCount</p>
+
+        <div class="readability">
+            <h2>Readability</h2>
+            <p>Flesch Reading Score: @readingScore</p>
+            <p>Flesch-Kincaid Grade Level: @gradeLevel</p>
+        </div>
+
+    </div>
+
+</div>
