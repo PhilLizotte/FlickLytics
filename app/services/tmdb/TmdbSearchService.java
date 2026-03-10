@@ -126,7 +126,7 @@ public class TmdbSearchService {
                 // so I can't do it the same way it's done for genres as the ID is only fetched as part of the enrichment process. 
                 reviewListStage = reviewService.fetchReviewsList("movie", id);
                 try {
-                    o.put("reviews", reviewService.extractSentiment(reviewListStage.toCompletableFuture().get()));
+                    o.put("reviewsSentiment", reviewService.extractSentiment(reviewListStage.toCompletableFuture().get()));
                 }
                 catch (Exception e) {
                     System.err.println("Error when trying to complete the promise for reviews (movies).");
@@ -143,10 +143,10 @@ public class TmdbSearchService {
                 // REVIEWS
                 reviewListStage = reviewService.fetchReviewsList("tv", id);
                 try {
-                    o.put("reviews", reviewService.extractSentiment(reviewListStage.toCompletableFuture().get()));
+                    o.put("reviewsSentiment", reviewService.extractSentiment(reviewListStage.toCompletableFuture().get()));
                 }
                 catch (Exception e) {
-                    System.err.println("Error when trying to complete the promise for reviews (movies).");
+                    System.err.println("Error when trying to complete the promise for reviews (tv shows).");
                 }
 
                 normalizeCommonMovieTvFields(o, false);

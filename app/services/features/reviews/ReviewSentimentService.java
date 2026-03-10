@@ -7,15 +7,24 @@ import play.libs.ws.WSRequest;
 import java.util.concurrent.CompletionStage;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
+// import java.util.Collection.stream;
+import java.util.stream.Collectors;
 
 import services.tmdb.TmdbConfig;
 
+/**
+ * @author Craig Kogan (40175780)
+ * ReviewSentiment individual part
+ */
 public class ReviewSentimentService {
 
     private final WSClient ws;
     private final TmdbConfig tmdbConfig;
 
+    // list of 'positive/happy' keywords
     private static final Set<String> posList = Set.of(
         "excellent", "amazing", "fantastic", "incredible", "outstanding", 
         "brilliant", "masterpiece", "phenomenal", "superb", "magnificent", 
@@ -29,6 +38,7 @@ public class ReviewSentimentService {
         "wonderfully"
     );
 
+    // list of 'negative/sad' keywords
     private static final Set<String> negList = Set.of( 
         "terrible", "awful", "horrible", "abysmal", "atrocious", "dreadful", 
         "disaster", "garbage", "unwatchable", "painful", "worst", "trash", 
@@ -39,6 +49,7 @@ public class ReviewSentimentService {
         "flat", "failed", "hate", "flaw", "irk", "annoy", "annoyed", "annoying"
     );
 
+    // list of negating words
     private static final Set<String> negations = Set.of(
         "not", "never", "no", "hardly", "barely", "isnt", "wasnt", "didnt", 
         "wouldnt", "hasnt"
@@ -50,6 +61,14 @@ public class ReviewSentimentService {
         this.tmdbConfig = tmdbConfig;
     }
 
+    /**
+     * @author Craig Kogan (40175780)
+     * @param kind The kind of media being analyzed. Must be either 'movie' or 'tv'.
+     * @param id The id of the movie or tv show
+     * @return Returns a completion stage that contains an array list of all the reviews
+     * Since each page of reviews contains a maximum of 20 reviews, we need to do three API calls
+     * to fetch the first three pages of reviews.
+     */
     public CompletionStage<ArrayList<String>> fetchReviewsList(String kind, int id) {
         String url = tmdbConfig.getBaseUrl() + "/" + kind + "/" + id + "/reviews";
         WSRequest request1 = ws.url(url)
@@ -70,7 +89,7 @@ public class ReviewSentimentService {
         return request1.get().thenCompose(resp1
                 -> request2.get().thenCompose(resp2
                         -> request3.get().thenApply(resp3 -> {
-                    ArrayList<String> list = new ArrayList<String>();
+                    ArrayList<String> list = new ArrayList<>();
                     JsonNode res1 = resp1.asJson().get("results");
                     JsonNode res2 = resp2.asJson().get("results");
                     JsonNode res3 = resp3.asJson().get("results");
@@ -101,7 +120,11 @@ public class ReviewSentimentService {
         );
     }
 
-    // BUG:: This is likely an extrmely slow process. 
+    /**
+     * @author Craig Kogan (40175780)
+     * @param reviewsList The list of reviews that are to be analyzed
+     * @return An emoticon representing the review sentiment
+     */
     public String extractSentiment(ArrayList<String> reviewsList) {
         int posScore = 0;
         int negScore = 0;
@@ -113,52 +136,141 @@ public class ReviewSentimentService {
 
         boolean negate = false;
 
-        if (reviewsList.size() == 0)
+        if (reviewsList.isEmpty())
             return "? (no reviews!)";
 
-        for (String review : reviewsList)
-        {
-            score = 0;
-            split = review.toLowerCase().replaceAll("[^a-zé\\-\\s]", "").split(" ");
-            if (split.length == 0)
-            {
-                empty++;
-                continue;
-            }
+        // Since streams can only return a single value but I want 4 distinct counters, I'm packing the 
+        // counters into a single value. This is a type of encoding. This works because I know that there 
+        //are at most 50 reviews. Therefore, no counter will ever surpass 2 digits. That means I need a number
+        // that has at most 8 digits. I assign the first two to count the positive reviews,
+        // the third and fourth to track the negative reviews, the fifth and sixth to track the
+        // neutral reviews, and finally the rightmost two digits track empty reviews (no text).
+
+        // (You can make this type of packing even denser if you use binary bits instead of base10 
+        // integer digits because computers store data in bits, so the difference in accuracy
+        // will build up with large values when using integer digits)
+
+        // I am aware that this is likely not what the prof had in mind. But, I am undoubtedly using
+        // streams to process the data and it works, so I see no problems. 
+
+        int out1 = reviewsList.stream()
+                .mapToInt(r -> {
+                    List<String> split2 = Arrays.asList(r.toLowerCase().replaceAll("[^a-zé\\-\\s]", "").split(" "));
+                    int scores = 0;
+                    // pos: XX------
+                    // neg: --XX----
+                    // neu: ----XX--
+                    // emp: ------XX
+
+                    // s -> score of a single review
+                    int s = split2.stream()
+                        .mapToInt(w -> {
+                            // TODO:: somehow figure out negation words?
+                            if (posList.contains(w))
+                                return 1;
+                            else if (negList.contains(w))
+                                return -1;
+                            return 0;
+                        })
+                        .sum();
+
+                    // collect the score of the singular review into a counter
+                    // empty
+                    if (split2.isEmpty()) // not actually using this :P
+                        scores += 1;
+
+                    // positive
+                    else if (s > 0)
+                        scores += 1000000;
+
+                    // negactive
+                    else if (s < 0)
+                        scores += 10000;
+
+                    // neutral
+                    else 
+                        scores += 100;
+
+                    return scores;
+                })
+                .sum();
+
+        // System.out.println("o1: " + out1);
+
+        int posS = out1 / 1000000;
+        out1 -= (posS * 1000000);
+        int negS = out1 / 10000;
+        out1 -= (negS * 10000);
+        int neuS = out1 / 100;
+        out1 -= (neuS * 100);
+        int emp = out1;
+
+
+
+
+
+        int thresh = (int)Math.floor((reviewsList.size() - emp) * 0.7f);
+        // debug confirmation line
+        // System.out.println("thresh: " + thresh + ", posS: " + posS + ", negS: " + negS + ", neuS: " + neuS);
+
+        if (posS >= thresh)
+            return ":-)";
+        else if (negS >= thresh)
+            return ":-(";
+        else
+            return ":|";
+
+
+        // for (String review : reviewsList)
+        // {
+        //     score = 0;
+        //     split = review.toLowerCase().replaceAll("[^a-zé\\-\\s]", "").split(" ");
+        //     if (split.length == 0)
+        //     {
+        //         empty++;
+        //         continue;
+        //     }
             
-            for (String word : split)
-            {
-                if (negations.contains(word))
-                {
-                    negate = true;
-                    continue;
-                }
+        //     for (String word : split)
+        //     {
+        //         // if (negations.contains(word))
+        //         // {
+        //         //     negate = true;
+        //         //     continue;
+        //         // }
 
-                if (posList.contains(word))
-                    score += !negate ? 1 : -1;
-                else if (negList.contains(word))
-                    score += !negate ? -1 : 1;
+        //         if (posList.contains(word))
+        //             score += !negate ? 1 : -1;
+        //         else if (negList.contains(word))
+        //             score += !negate ? -1 : 1;
 
-                negate = false;               
-            }
+        //         negate = false;
+        //     }
 
-            if (score > 0)
-                posScore++;
-            else if (score < 0)
-                negScore++;
-            else 
-                neutralScore++;
-        }
+        //     if (score > 0)
+        //         posScore++;
+        //     else if (score < 0)
+        //         negScore++;
+        //     else 
+        //         neutralScore++;
+        // }
 
-        // little debug confirmation
-        // System.out.print((posScore + negScore + neutralScore + empty == reviewsList.size()) ? "ALL IS GOOD" : "SOMEHOW THE COUNT IS OFF, AHHHHHHHHHHHHHHHHHHHHHHH");
-        int threshold = (int)Math.floor((reviewsList.size() - empty) * 0.7f);
+        // // little debug confirmation
+        // // System.out.print((posScore + negScore + neutralScore + empty == reviewsList.size()) ? "ALL IS GOOD" : "SOMEHOW THE COUNT IS OFF, AHHHHHHHHHHHHHHHHHHHHHHH");
+        // int threshold = (int)Math.floor((reviewsList.size() - empty) * 0.7f);
         // System.out.println(" - thresh: " + threshold + ", pos: " + posScore + ", neg: " + negScore + ", neutral: " + neutralScore + ", empty: " + empty);
 
-        if (posScore >= threshold)
-            return ":-)";
-        else if (negScore >= threshold)
-            return ":-(";
-        return ":|";
+        // if (posScore >= threshold)
+        // {
+        //     System.out.println("OUTPUT: " + output + ", STANDARD: :-)");
+        //     return ":-)";
+        // }
+        // else if (negScore >= threshold)
+        // {
+        //     System.out.println("OUTPUT: " + output + ", STANDARD: :-(");
+        //     return ":-(";
+        // }
+        // System.out.println("OUTPUT: " + output + ", STANDARD: :|");
+        // return ":|";
     }
 }

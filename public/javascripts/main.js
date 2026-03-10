@@ -145,10 +145,10 @@ function performSearch() {
                         :   "";
                     const reviewsSentiment = 
                         (
-                            item.reviews !== undefined &&
-                            item.reviews !== null
+                            item.reviewsSentiment !== undefined &&
+                            item.reviewsSentiment !== null
                         ) ?
-                            item.reviews
+                            item.reviewsSentiment
                         :   "";
 
                     const meta = document.createElement("span");
