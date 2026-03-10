@@ -48,8 +48,6 @@ public class TmdbSearchService {
 
         String url = tmdbConfig.getBaseUrl() + endpoint;
         
-        System.out.println(tmdbConfig.getApiKey());
-        
         WSRequest request = ws.url(url)
                 .addQueryParameter("api_key", tmdbConfig.getApiKey())
                 .addQueryParameter("query", query)

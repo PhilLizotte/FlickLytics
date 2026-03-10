@@ -4,6 +4,7 @@
 
 # An example controller showing a sample home page
 GET     /                           controllers.HomeController.index()
+GET     /finances/:movieId          controllers.HomeController.finances(movieId: Int)
 GET     /api/search                 controllers.TmdbSearchController.search(category: String, query: String)
 GET     /api/movie                  controllers.TmdbSearchController.searchMovieById(id: Int)
 
