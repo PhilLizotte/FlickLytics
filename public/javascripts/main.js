@@ -19,6 +19,7 @@ function performSearch() {
     fetch(url)
         .then(res => res.json())
         .then(json => {
+
             const block = document.createElement("div");
             const header = document.createElement("div");
             header.innerText = "Search: \"" + query + "\" (" + category + ")";
@@ -93,13 +94,46 @@ function performSearch() {
                     const voteAverage = (item.vote_average !== undefined && item.vote_average !== null) ? item.vote_average : "";
 
                     const meta = document.createElement("span");
+
+                    // Give this HTML element a unique ID so I can reference it in the movie detail call
                     meta.innerText =
                         ", Language: " + language +
                         ", Genres: " + genres +
                         ", Release Date: " + releaseDate +
                         ", Popularity: " + popularity +
                         ", Vote Average: " + voteAverage;
+
                     li.appendChild(meta);
+
+                    const fpLinkSpan = document.createElement("span");
+                    fpLinkSpan.className = "financial_" + category + item.id;
+
+                    const entryList = document.createElement("ul");
+                    entryList.appendChild(document.createElement("li").appendChild(fpLinkSpan));
+
+                    li.appendChild(entryList);
+                    li.appendChild(document.createElement("br"));
+
+                    if (category === "movie") {
+
+                        // Financial Performance Feature
+                        // First, build URL
+                        const movieIdUrl = "/api/movie?id=" + item.id;
+
+                        fetch(movieIdUrl)
+                            .then(res => res.json())
+                            .then(json => {
+
+                                const linkSpans = document.getElementsByClassName("financial_movie" + json.id);
+                                for (const linkSpan of linkSpans) {
+                                    const link = document.createElement("a");
+                                    link.href = "/finances/" + json.id;
+                                    link.innerText = "View financial performance";
+                                    linkSpan.appendChild(link)
+                                }
+                            })
+                            .catch(err => console.error(err))
+                    }
                 }
                 list.appendChild(li);
             }

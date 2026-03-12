@@ -1,0 +1,11 @@
+@(title: String, np: String, roi: String, fp: String)
+
+@main("FlickLytics") {
+  <h2 id="Movie header"><em>@title</em> Financial Info</h2>
+  <div>
+    <b>Net Profit: </b><span id="np_value">$@np</span><br/>
+    <b>ROI Percent: </b><span id="roi_value">@roi</span><br/>
+    <b>Financial Performance: </b><span id="fp_value">@fp</span><br/>
+  </div>
+  <a href="/">Back to main menu</a>
+}
