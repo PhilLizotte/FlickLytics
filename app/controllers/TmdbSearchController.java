@@ -66,16 +66,15 @@ public class TmdbSearchController extends Controller {
 
     public CompletionStage<Result> tvDetails(Integer id) {
         return tmdbSearchService.tvDetails(id)
-                .thenApply(tvShowDTO -> {
+                .thenApply(tvShow -> {
                     double readingScore =
-                            readabilityService.calculateFleschReaddingEase(tvShowDTO.getOverview());
-
-
+                            readabilityService.calculateFleschReaddingEase(tvShow.getOverview());
+                    
                     double gradeLevel =
-                            readabilityService.calculateFleschKincaidGradeLevel(tvShowDTO.getOverview());
+                            readabilityService.calculateFleschKincaidGradeLevel(tvShow.getOverview());
 
                     return ok(views.html.tvDetails.render(
-                            tvShowDTO,
+                            tvShow,
                             readingScore,
                             gradeLevel
                     ));
