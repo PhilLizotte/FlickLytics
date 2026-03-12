@@ -39,7 +39,7 @@ public class FinancialPerformanceService {
                 if (budget == 0) {
                     validROI = false;
                     roiPercent = 0;
-                    financialRating = "Profitable";
+                    financialRating = "Unknown";
                 } else {
                     roiPercent = (int) (100 * ((double)netProfit / (double)budget));
                     if (roiPercent < 0) {

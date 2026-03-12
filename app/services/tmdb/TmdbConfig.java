@@ -20,7 +20,7 @@ public class TmdbConfig {
         }
 
         if (raToken == null || raToken.trim().isEmpty()) {
-            throw new IllegalStateException("Missing TMDb read access token. Set environment variable TMDB_API_KEY " +
+            throw new IllegalStateException("Missing TMDb read access token. Set environment variable TMDB_RA_TOKEN " +
                     "using \"$env:TMDB_RA_TOKEN={your token here}\" or configure tmdb.raToken.");
         }
     }
