@@ -1,0 +1,30 @@
+@(personId: Integer,
+  items: java.util.List[models.dto.PersonKnownForItemDTO],
+  popularityStats: models.dto.PersonKnownForStatsDTO,
+  voteAverageStats: models.dto.PersonKnownForStatsDTO,
+  voteCountStats: models.dto.PersonKnownForStatsDTO)
+
+@main("Known for") {
+  <div>
+    <h2>Known for</h2>
+    <div>Person ID: @personId</div>
+    <div>
+      <h3>Summary statistics</h3>
+      <div>Popularity: Count: @popularityStats.getCount, Min: @popularityStats.getMin, Max: @popularityStats.getMax, Average: @popularityStats.getAverage</div>
+      <div>Vote Average: Count: @voteAverageStats.getCount, Min: @voteAverageStats.getMin, Max: @voteAverageStats.getMax, Average: @voteAverageStats.getAverage</div>
+      <div>Vote Count: Count: @voteCountStats.getCount, Min: @voteCountStats.getMin, Max: @voteCountStats.getMax, Average: @voteCountStats.getAverage</div>
+    </div>
+    <ol>
+      @for(item <- items) {
+        <li>
+          <a href="@item.getTmdbUrl" target="_blank" rel="noopener noreferrer">@item.getTitle</a>,
+          Media Type: @item.getMediaType,
+          Release Date: @item.getReleaseDate,
+          Popularity: @item.getPopularity,
+          Vote Average: @item.getVoteAverage,
+          Vote Count: @item.getVoteCount
+        </li>
+      }
+    </ol>
+  </div>
+}

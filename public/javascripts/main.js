@@ -14,19 +14,22 @@ function performSearch() {
         return;
     }
 
-    const url = "/api/search?category=" + encodeURIComponent(category) + "&query=" + encodeURIComponent(query);
+    const url =
+        "/api/search?category=" +
+        encodeURIComponent(category) +
+        "&query=" +
+        encodeURIComponent(query);
 
     fetch(url)
-        .then(res => res.json())
-        .then(json => {
-
+        .then((res) => res.json())
+        .then((json) => {
             const block = document.createElement("div");
             const header = document.createElement("div");
-            header.innerText = "Search: \"" + query + "\" (" + category + ")";
+            header.innerText = 'Search: "' + query + '" (' + category + ")";
             block.appendChild(header);
 
             const list = document.createElement("ol");
-            const items = (json && json.results) ? json.results.slice(0, 10) : [];
+            const items = json && json.results ? json.results.slice(0, 10) : [];
             for (let i = 0; i < items.length; i++) {
                 const li = document.createElement("li");
                 const item = items[i] || {};
@@ -35,14 +38,25 @@ function performSearch() {
                     const name = item.name || "(no name)";
 
                     const idText = document.createElement("span");
-                    idText.innerText = "ID: " + (item.id !== undefined && item.id !== null ? item.id : "") + ", ";
+                    idText.innerText =
+                        "ID: " +
+                        (item.id !== undefined && item.id !== null ?
+                            item.id
+                        :   "") +
+                        ", ";
                     li.appendChild(idText);
 
                     const nameSpan = document.createElement("span");
                     nameSpan.innerText = name + ", ";
                     li.appendChild(nameSpan);
 
-                    const popularity = (item.popularity !== undefined && item.popularity !== null) ? item.popularity : "";
+                    const popularity =
+                        (
+                            item.popularity !== undefined &&
+                            item.popularity !== null
+                        ) ?
+                            item.popularity
+                        :   "";
                     const popSpan = document.createElement("span");
                     popSpan.innerText = "Popularity: " + popularity + ", ";
                     li.appendChild(popSpan);
@@ -57,14 +71,27 @@ function performSearch() {
                         li.appendChild(photoLink);
                     }
 
-                    const gender = (item.gender === 1) ? "Female" : (item.gender === 2) ? "Male" : "Other/Unknown";
+                    const gender =
+                        item.gender === 1 ? "Female"
+                        : item.gender === 2 ? "Male"
+                        : "Other/Unknown";
                     const dept = item.known_for_department || "";
 
                     const infoSpan = document.createElement("span");
-                    infoSpan.innerText = "Gender: " + gender + ", Department: " + dept + ", ";
+                    infoSpan.innerText =
+                        "Gender: " + gender + ", Department: " + dept + ", ";
                     li.appendChild(infoSpan);
 
-                    const knownForUrl = item.knownForUrl || "";
+                    const personId =
+                        item.id !== undefined && item.id !== null ?
+                            item.id
+                        :   "";
+                    const knownForUrl =
+                        personId ?
+                            "/person/" +
+                            encodeURIComponent(personId) +
+                            "/known-for"
+                        :   "";
                     if (knownForUrl) {
                         const knownForLink = document.createElement("a");
                         knownForLink.href = knownForUrl;
@@ -74,10 +101,19 @@ function performSearch() {
                         li.appendChild(knownForLink);
                     }
                 } else {
-                    const title = item.title || item.name || item.original_name || "(no title)";
+                    const title =
+                        item.title ||
+                        item.name ||
+                        item.original_name ||
+                        "(no title)";
 
                     const idText = document.createElement("span");
-                    idText.innerText = "ID: " + (item.id !== undefined && item.id !== null ? item.id : "") + ", ";
+                    idText.innerText =
+                        "ID: " +
+                        (item.id !== undefined && item.id !== null ?
+                            item.id
+                        :   "") +
+                        ", ";
                     li.appendChild(idText);
 
                     const titleLink = document.createElement("a");
@@ -87,21 +123,46 @@ function performSearch() {
                     titleLink.innerText = title;
                     li.appendChild(titleLink);
 
-                    const language = item.language || item.original_language || "";
-                    const genres = Array.isArray(item.genres) ? item.genres.join(", ") : "";
-                    const releaseDate = item.releaseDate || item.release_date || item.first_air_date || "";
-                    const popularity = (item.popularity !== undefined && item.popularity !== null) ? item.popularity : "";
-                    const voteAverage = (item.vote_average !== undefined && item.vote_average !== null) ? item.vote_average : "";
+                    const language =
+                        item.language || item.original_language || "";
+                    const genres =
+                        Array.isArray(item.genres) ?
+                            item.genres.join(", ")
+                        :   "";
+                    const releaseDate =
+                        item.releaseDate ||
+                        item.release_date ||
+                        item.first_air_date ||
+                        "";
+                    const popularity =
+                        (
+                            item.popularity !== undefined &&
+                            item.popularity !== null
+                        ) ?
+                            item.popularity
+                        :   "";
+                    const voteAverage =
+                        (
+                            item.vote_average !== undefined &&
+                            item.vote_average !== null
+                        ) ?
+                            item.vote_average
+                        :   "";
 
                     const meta = document.createElement("span");
 
                     // Give this HTML element a unique ID so I can reference it in the movie detail call
                     meta.innerText =
-                        ", Language: " + language +
-                        ", Genres: " + genres +
-                        ", Release Date: " + releaseDate +
-                        ", Popularity: " + popularity +
-                        ", Vote Average: " + voteAverage;
+                        ", Language: " +
+                        language +
+                        ", Genres: " +
+                        genres +
+                        ", Release Date: " +
+                        releaseDate +
+                        ", Popularity: " +
+                        popularity +
+                        ", Vote Average: " +
+                        voteAverage;
 
                     li.appendChild(meta);
 
@@ -109,31 +170,43 @@ function performSearch() {
                     fpLinkSpan.className = "financial_" + category + item.id;
 
                     const entryList = document.createElement("ul");
-                    entryList.appendChild(document.createElement("li").appendChild(fpLinkSpan));
+                    entryList.appendChild(
+                        document.createElement("li").appendChild(fpLinkSpan),
+                    );
 
                     li.appendChild(entryList);
                     li.appendChild(document.createElement("br"));
 
                     if (category === "movie") {
-
                         // Financial Performance Feature
                         // First, build URL
                         const movieIdUrl = "/api/movie?id=" + item.id;
 
                         fetch(movieIdUrl)
-                            .then(res => res.json())
-                            .then(json => {
-
-                                const linkSpans = document.getElementsByClassName("financial_movie" + json.id);
+                            .then((res) => res.json())
+                            .then((json) => {
+                                const linkSpans =
+                                    document.getElementsByClassName(
+                                        "financial_movie" + json.id,
+                                    );
                                 for (const linkSpan of linkSpans) {
                                     const link = document.createElement("a");
                                     link.href = "/finances/" + json.id;
-                                    link.innerText = "View financial performance";
-                                    linkSpan.appendChild(link)
+                                    link.innerText =
+                                        "View financial performance";
+                                    linkSpan.appendChild(link);
                                 }
                             })
-                            .catch(err => console.error(err))
+                            .catch((err) => console.error(err));
                     }
+
+                    const singlePageUrl = document.createElement("a");
+                    singlePageUrl.innerText = ", link to this item";
+                    singlePageUrl.href =
+                        "tv" === category ?
+                            "/tv/" + item.id
+                        :   "/movie/" + item.id;
+                    li.appendChild(singlePageUrl);
                 }
                 list.appendChild(li);
             }
@@ -145,5 +218,5 @@ function performSearch() {
                 resultsContainer.removeChild(resultsContainer.lastElementChild);
             }
         })
-        .catch(err => console.error(err));
+        .catch((err) => console.error(err));
 }

@@ -9,8 +9,7 @@ import play.test.WithApplication;
 
 import static org.junit.Assert.assertEquals;
 import static play.mvc.Http.Status.OK;
-import static play.test.Helpers.GET;
-import static play.test.Helpers.route;
+import static play.test.Helpers.*;
 
 public class HomeControllerTest extends WithApplication {
 
@@ -47,6 +46,22 @@ public class HomeControllerTest extends WithApplication {
 
         Result result = route(app, request);
         System.out.println(result);
+        assertEquals(OK, result.status());
+    }
+
+    @Test
+    public void testMovieDetailsEndpoint() {
+        Result result = route(app,
+                fakeRequest(GET, "/movie/10")
+        );
+        assertEquals(OK, result.status());
+    }
+
+    @Test
+    public void testTvShowDetailsEndpoint() {
+        Result result = route(app,
+                fakeRequest(GET, "/tv/10")
+        );
         assertEquals(OK, result.status());
     }
 
