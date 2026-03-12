@@ -46,7 +46,7 @@ public class TmdbSearchService {
             genreMapStage = CompletableFuture.completedFuture(Map.of());
         }
 
-        String url = tmdbConfig.getBaseUrl() + endpoint;  
+        String url = tmdbConfig.getBaseUrl() + endpoint;
         WSRequest request = ws.url(url)
                 .addQueryParameter("api_key", tmdbConfig.getApiKey())
                 .addQueryParameter("query", query)
