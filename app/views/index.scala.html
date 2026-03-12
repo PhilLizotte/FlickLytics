@@ -1,14 +1,31 @@
-@()
-
-@main("Tab Title") {
-  <div>
-    <input id="searchQuery" type="text" placeholder="Search keywords" />
-    <select id="searchCategory">
-      <option value="movie">Movie</option>
-      <option value="tv">TV show</option>
-      <option value="person">Person</option>
-    </select>
-    <button type="button" onclick="performSearch()">Search</button>
-  </div>
-  <div id="resultsContainer"></div>
+@() @main("Tab Title") {
+<div>
+    <div>
+        <input
+            id="searchQuery"
+            type="text"
+            placeholder="Search keywords"
+            style="height: 2em; border-radius: 7.5px"
+        />
+        <select id="searchCategory" style="height: 2.5em; border-radius: 7.5px">
+            <option value="movie">Movie</option>
+            <option value="tv">TV show</option>
+            <option value="person">Person</option>
+        </select>
+        <button
+            type="button"
+            style="
+                height: 2em;
+                width: 6em;
+                font-size: large;
+                border-radius: 7.5px;
+            "
+            onclick="performSearch()"
+        >
+            Search
+        </button>
+    </div>
+    <div id="resultsContainer"></div>
+    @components.team()
+</div>
 }

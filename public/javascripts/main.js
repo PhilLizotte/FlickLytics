@@ -34,6 +34,9 @@ function performSearch() {
                 const li = document.createElement("li");
                 const item = items[i] || {};
 
+                // DEBUG:: display the items in the console.
+                console.log(item);
+
                 if (category === "person") {
                     const name = item.name || "(no name)";
 
@@ -148,6 +151,13 @@ function performSearch() {
                         ) ?
                             item.vote_average
                         :   "";
+                    const reviewsSentiment =
+                        (
+                            item.reviewsSentiment !== undefined &&
+                            item.reviewsSentiment !== null
+                        ) ?
+                            item.reviewsSentiment
+                        :   "";
 
                     const meta = document.createElement("span");
 
@@ -162,8 +172,9 @@ function performSearch() {
                         ", Popularity: " +
                         popularity +
                         ", Vote Average: " +
-                        voteAverage;
-
+                        voteAverage +
+                        ", Reviews sentiment: " +
+                        reviewsSentiment;
                     li.appendChild(meta);
 
                     const fpLinkSpan = document.createElement("span");
