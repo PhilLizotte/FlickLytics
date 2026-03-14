@@ -46,7 +46,14 @@ public class TmdbSearchController extends Controller {
                 .exceptionally(ex -> badRequest("Invalid category"));
     }
 
-    // @author: aliiimaher
+    /**
+     * Handles the request to show movie details.
+     * Fetches the movie from TMDb, calculates readability scores,
+     * and renders the movieDetails view.
+     *
+     * @param id the unique identifier of the movie
+     * @return a CompletionStage that will complete with an HTTP Result rendering the movieDetails page
+     */
     public CompletionStage<Result> movieDetails(Integer id) {
         return tmdbSearchService.movieDetails(id)
                 .thenApply(movie -> {
@@ -64,6 +71,14 @@ public class TmdbSearchController extends Controller {
                 });
     }
 
+    /**
+     * Handles the request to show TV show details.
+     * Fetches the TV show from TMDb, calculates readability scores,
+     * and renders the tvDetails view.
+     *
+     * @param id the unique identifier of the TV show
+     * @return a CompletionStage that will complete with an HTTP Result rendering the tvDetails page
+     */
     public CompletionStage<Result> tvDetails(Integer id) {
         return tmdbSearchService.tvDetails(id)
                 .thenApply(tvShow -> {

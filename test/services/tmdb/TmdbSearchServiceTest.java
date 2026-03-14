@@ -10,8 +10,22 @@ import org.junit.Test;
 import java.time.LocalDate;
 import java.util.concurrent.CompletableFuture;
 
+/**
+ * Unit tests for {@link TmdbSearchService}.
+ * <p>
+ * Verifies that movieDetails and tvDetails methods correctly return
+ * the expected domain objects when mocked responses are provided.
+ * </p>
+ *
+ * Author: Ali Maher
+ */
 public class TmdbSearchServiceTest {
 
+    /**
+     * Tests fetching movie details via TmdbSearchService.
+     * Mocks the service to return a sample Movie object and asserts
+     * that the returned Movie has the expected name.
+     */
     @Test
     public void testGetMovieDetails() {
         TmdbSearchService service = mock(TmdbSearchService.class);
@@ -26,7 +40,12 @@ public class TmdbSearchServiceTest {
         Movie result = service.movieDetails(1).toCompletableFuture().join();
         assertEquals("Test", result.getName());
     }
-    
+
+    /**
+     * Tests fetching TV show details via TmdbSearchService.
+     * Mocks the service to return a sample TVShow object and asserts
+     * that the returned TVShow has the expected name.
+     */
     @Test
     public void testGetTVShowDetails() {
         TmdbSearchService service = mock(TmdbSearchService.class);

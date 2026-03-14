@@ -5,14 +5,27 @@ import org.junit.Test;
 import services.features.readability.ReadabilityService;
 import java.lang.reflect.Method;
 
+/**
+ * Unit tests for {@link ReadabilityService}.
+ * <p>
+ * Verifies the correct calculation of Flesch Reading Ease and
+ * Flesch-Kincaid Grade Level, as well as the internal behavior of
+ * private helper methods like countWords, countSentences, and countSyllables.
+ * Ensures correct handling of edge cases and empty/null text.
+ * </p>
+ *
+ * Author: Ali Maher
+ */
 public class ReadabilityServiceTest {
-    
+
+    /** Tests that the ReadabilityService instance can be created. */
     @Test
     public void testReadabilityService() {
         ReadabilityService readabilityService = new ReadabilityService();
         assertNotNull(readabilityService);
     }
-    
+
+    /** Tests calculation of Flesch Reading Ease on a simple sentence. */
     @Test
     public void testCalculateFleschReadingEase() {
         ReadabilityService readabilityService = new ReadabilityService();
@@ -21,7 +34,8 @@ public class ReadabilityServiceTest {
         // The expected score for this simple sentence is around 100
         assertTrue(score > 90);
     }
-    
+
+    /** Tests calculation of Flesch-Kincaid Grade Level on a simple sentence. */
     @Test
     public void testCalculateFleschKincaidGradeLevel() {
         ReadabilityService readabilityService = new ReadabilityService();
@@ -30,7 +44,8 @@ public class ReadabilityServiceTest {
         // The expected grade level for this simple sentence is around 1
         assertTrue(gradeLevel < 2);
     }
-    
+
+    /** Tests behavior for empty text input. */
     @Test
     public void testEmptyText() {
         ReadabilityService readabilityService = new ReadabilityService();
@@ -42,6 +57,7 @@ public class ReadabilityServiceTest {
         assertEquals(0, gradeLevel, 0.01);
     }
 
+    /** Tests handling of silent 'e' in single-word input. */
     @Test
     public void testSilentE() {
         ReadabilityService service = new ReadabilityService();
@@ -51,6 +67,7 @@ public class ReadabilityServiceTest {
         assertTrue(score >= 0);
     }
 
+    /** Tests edge cases for countSyllables private method. */
     @Test
     public void testEdgeCases() {
         ReadabilityService service = new ReadabilityService();
@@ -93,6 +110,7 @@ public class ReadabilityServiceTest {
         assertEquals(1, result5);
     }
 
+    /** Tests private methods countWords, countSentences, and countSyllables with null input. */
     @Test
     public void testPrivateMethodsWithNull() throws Exception {
         ReadabilityService service = new ReadabilityService();

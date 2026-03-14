@@ -7,8 +7,24 @@ import java.util.List;
 
 import static org.junit.Assert.*;
 
+/**
+ * Unit tests for domain model classes:
+ * Movie, Genre, ProductionCompany, SpokenLanguage, Network, and Creator.
+ * <p>
+ * Each test verifies that the constructors correctly assign all fields
+ * and that the getters return the expected values.
+ * This ensures the integrity of the domain layer.
+ * </p>
+ *
+ * @author Ali Maher
+ */
 public class MovieTest {
 
+    /**
+     * Tests the Movie domain object.
+     * Verifies that all fields are correctly assigned via the constructor.
+     * Uses a Movie instance with sample data.
+     */
     @Test
     public void testMovieDomain() {
         Movie movie = new Movie(
@@ -48,6 +64,10 @@ public class MovieTest {
         assertEquals(20000, movie.getVoteCount());
     }
 
+    /**
+     * Tests the Genre domain object.
+     * Verifies that the ID and name are correctly assigned.
+     */
     @Test
     public void testGenreDomain() {
         Genre genre = new Genre(1, "Action");
@@ -55,6 +75,10 @@ public class MovieTest {
         assertEquals("Action", genre.getName());
     }
 
+    /**
+     * Tests the ProductionCompany domain object.
+     * Verifies all fields are correctly assigned.
+     */
     @Test
     public void testProductionCompanyDomain() {
         ProductionCompany company = new ProductionCompany(1, "Warner Bros", "Warner Bros", "Warner Bros");
@@ -64,6 +88,10 @@ public class MovieTest {
         assertEquals("Warner Bros", company.getOriginCountry());
     }
 
+    /**
+     * Tests the SpokenLanguage domain object.
+     * Verifies ID and name are correctly assigned.
+     */
     @Test
     public void testSpokenLanguageDomain() {
         SpokenLanguage language = new SpokenLanguage(1, "English");
@@ -71,6 +99,10 @@ public class MovieTest {
         assertEquals("English", language.getName());
     }
 
+    /**
+     * Tests the Network domain object.
+     * Verifies all fields are correctly assigned.
+     */
     @Test
     public void testNetwork() {
         Network network = new Network(1, "https://hbo.com/logo.png", "HBO", "USA");
@@ -79,7 +111,11 @@ public class MovieTest {
         assertEquals("HBO", network.getName());
         assertEquals("USA", network.getOrigin_country());
     }
-    
+
+    /**
+     * Tests the Creator domain object.
+     * Verifies all fields are correctly assigned.
+     */
     @Test
     public void testCreator() {
         Creator creator = new Creator(1, "12hukj12l", "Christopher Nolan", 0, "https://example.com/nolan.jpg");

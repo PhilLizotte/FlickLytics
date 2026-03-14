@@ -6,13 +6,19 @@ import models.dto.MovieDTO;
 import models.dto.TVShowDTO;
 
 /**
- * This is domain model for representing Movie.
- * The fields are based on the Appendix of the Project Document.
+ * Mapper class to convert TMDb DTOs to domain models.
+ * Provides static methods for Movie and TVShow conversions.
  *
- * @author  Ali Maher
+ * @author Ali Maher
  */
-
 public class TmdbMapper {
+
+    /**
+     * Converts a {@link MovieDTO} to a {@link Movie} domain object.
+     *
+     * @param movieDTO the movie DTO to convert
+     * @return the corresponding Movie domain object
+     */
     public static Movie toMovie(MovieDTO movieDTO) {
         return new Movie(
                 movieDTO.id,
@@ -34,6 +40,12 @@ public class TmdbMapper {
         );
     }
 
+    /**
+     * Converts a {@link TVShowDTO} to a {@link TVShow} domain object.
+     *
+     * @param tvShowDTO the TV show DTO to convert
+     * @return the corresponding TVShow domain object
+     */
     public static TVShow toTVShow(TVShowDTO tvShowDTO) {
         return new TVShow(
                 tvShowDTO.id,

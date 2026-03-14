@@ -28,6 +28,10 @@ public class HomeControllerTest extends WithApplication {
         assertEquals(OK, result.status());
     }
 
+    /**
+     * Tests the /movie/{id} endpoint.
+     * Ensures that requesting a movie by ID returns HTTP 200 OK.
+     */
     @Test
     public void testMovieDetailsEndpoint() {
         Result result = route(app,
@@ -36,6 +40,10 @@ public class HomeControllerTest extends WithApplication {
         assertEquals(OK, result.status());
     }
 
+    /**
+     * Tests the /tv/{id} endpoint.
+     * Ensures that requesting a TV show by ID returns HTTP 200 OK.
+     */
     @Test
     public void testTvShowDetailsEndpoint() {
         Result result = route(app,
