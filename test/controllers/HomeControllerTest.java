@@ -27,6 +27,27 @@ public class HomeControllerTest extends WithApplication {
         Result result = route(app, request);
         assertEquals(OK, result.status());
     }
+    
+    @Test
+    public void testFinances() {
+        Http.RequestBuilder request = new Http.RequestBuilder()
+            .method(GET)
+            .uri("/finances/11");
+
+        Result result = route(app, request);
+        assertEquals(OK, result.status());
+    }
+
+    @Test
+    public void testSearch() {
+        Http.RequestBuilder request = new Http.RequestBuilder()
+            .method(GET)
+            .uri("/api/search");
+
+        Result result = route(app, request);
+        System.out.println(result);
+        assertEquals(OK, result.status());
+    }
 
     /**
      * Tests the /movie/{id} endpoint.

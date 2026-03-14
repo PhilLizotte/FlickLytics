@@ -17,6 +17,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+
+import java.util.ArrayList;
+
+import services.features.reviews.ReviewSentimentService;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -27,6 +31,8 @@ public class TmdbSearchService {
     private final TmdbConfig tmdbConfig;
     private final ObjectMapper objectMapper;
 
+    private final ReviewSentimentService reviewService;
+
     private final ConcurrentMap<String, GenreCacheEntry> genreCache = new ConcurrentHashMap<>();
 
     @Inject
@@ -34,6 +40,8 @@ public class TmdbSearchService {
         this.ws = ws;
         this.tmdbConfig = tmdbConfig;
         this.objectMapper = Json.mapper();
+
+        this.reviewService = new ReviewSentimentService(ws, tmdbConfig);
     }
 
     public CompletionStage<JsonNode> search(String category, String query) {
@@ -116,7 +124,7 @@ public class TmdbSearchService {
                 .thenApply(response -> {
                     MovieDTO movieDTO = Json.fromJson(response.asJson(), MovieDTO.class);
                     return TmdbMapper.toMovie(movieDTO);
-                        });
+                });
     }
 
     /**
@@ -135,7 +143,7 @@ public class TmdbSearchService {
                 .thenApply(response -> {
                     TVShowDTO movieDTO = Json.fromJson(response.asJson(), TVShowDTO.class);
                     return TmdbMapper.toTVShow(movieDTO);
-                    });
+                });
     }
 
     private static class GenreCacheEntry {
@@ -172,13 +180,46 @@ public class TmdbSearchService {
 
             int id = o.hasNonNull("id") ? o.get("id").asInt() : -1;
 
+            CompletionStage<ArrayList<String>> reviewListStage;
+
             if ("movie".equalsIgnoreCase(category)) {
                 o.put("detailsUrl", "https://www.themoviedb.org/movie/" + id);
+
+                // GENRES
                 addGenreNames(o, genreMap);
+
+                // REVIEWS
+                // HACK:: If anyone knows of a better way to get at the results here, that would
+                // be super greatly appreciated.
+                // I spent a couple hours trying to figure it out and failed.
+                // A big difference between the reviews and the genres is that I need the
+                // movie/tv ID to get the reviews,
+                // so I can't do it the same way it's done for genres as the ID is only fetched
+                // as part of the enrichment process.
+                reviewListStage = reviewService.fetchReviewsList("movie", id);
+                try {
+                    o.put("reviewsSentiment",
+                            reviewService.extractSentiment(reviewListStage.toCompletableFuture().get()));
+                } catch (Exception e) {
+                    System.err.println("Error when trying to complete the promise for reviews (movies).");
+                }
+
                 normalizeCommonMovieTvFields(o, true);
             } else if ("tv".equalsIgnoreCase(category)) {
                 o.put("detailsUrl", "https://www.themoviedb.org/tv/" + id);
+
+                // GENRES
                 addGenreNames(o, genreMap);
+
+                // REVIEWS
+                reviewListStage = reviewService.fetchReviewsList("tv", id);
+                try {
+                    o.put("reviewsSentiment",
+                            reviewService.extractSentiment(reviewListStage.toCompletableFuture().get()));
+                } catch (Exception e) {
+                    System.err.println("Error when trying to complete the promise for reviews (tv shows).");
+                }
+
                 normalizeCommonMovieTvFields(o, false);
             } else if ("person".equalsIgnoreCase(category)) {
                 o.put("photoUrl", profileUrl(o));
