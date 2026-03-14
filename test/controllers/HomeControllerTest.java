@@ -31,7 +31,7 @@ public class HomeControllerTest extends WithApplication {
     @Test
     public void testMovieDetailsEndpoint() {
         Result result = route(app,
-                fakeRequest(GET, "/movie/10")
+                fakeRequest(GET, "/movie/11")
         );
         assertEquals(OK, result.status());
     }

@@ -18,7 +18,7 @@ public class ReadabilityService {
         int totalSentences = countSentences(text);
         int totalSyllables = countSyllables(text);
 
-        if (totalSentences == 0 || totalWords == 0) {
+        if (totalWords == 0) {
             return 0.0;
         }
 
@@ -32,7 +32,7 @@ public class ReadabilityService {
         int totalSentences = countSentences(text);
         int totalSyllables = countSyllables(text);
 
-        if (totalSentences == 0 || totalWords == 0) {
+        if (totalWords == 0) {
             return 0.0;
         }
 
