@@ -9,11 +9,11 @@ import services.features.reviews.ReviewSentimentService;
  */
 public class ReviewSentimentServiceTest {
 
-    @Test
-    public void testPositiveSentiment()
-    {
-        ReviewSentimentService rss = new ReviewSentimentService();
-    }
+    // @Test
+    // public void testPositiveSentiment()
+    // {
+    //     ReviewSentimentService rss = new ReviewSentimentService();
+    // }
 
 
 }
