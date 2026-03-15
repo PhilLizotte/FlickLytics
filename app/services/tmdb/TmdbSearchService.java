@@ -108,6 +108,12 @@ public class TmdbSearchService {
         });
     }
 
+    /**
+     * Fetches the details of a movie from TMDb API by its ID.
+     *
+     * @param id the unique identifier of the movie
+     * @return a {@link CompletionStage} that will complete with the {@link Movie} domain object
+     */
     public CompletionStage<Movie> movieDetails(int id) {
         String url = tmdbConfig.getBaseUrl() + "/movie/" + id;
         WSRequest request = ws.url(url)
@@ -121,6 +127,12 @@ public class TmdbSearchService {
                 });
     }
 
+    /**
+     * Fetches the details of a TV show from TMDb API by its ID.
+     *
+     * @param id the unique identifier of the TV show
+     * @return a {@link CompletionStage} that will complete with the {@link TVShow} domain object
+     */
     public CompletionStage<TVShow> tvDetails(int id) {
         String url = tmdbConfig.getBaseUrl() + "/tv/" + id;
         WSRequest request = ws.url(url)
