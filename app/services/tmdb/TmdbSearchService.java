@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.inject.Inject;
 import models.domain.Movie;
+import models.domain.Review;
 import models.domain.TVShow;
 import models.dto.MovieDTO;
 import models.dto.TVShowDTO;
@@ -176,6 +177,7 @@ public class TmdbSearchService {
                 // GENRES
                 addGenreNames(o, genreMap);
 
+                // BUG:: This is currently blocking code. I'll fix that for a later submission. 
                 // REVIEWS
                 // HACK:: If anyone knows of a better way to get at the results here, that would
                 // be super greatly appreciated.
@@ -187,7 +189,7 @@ public class TmdbSearchService {
                 reviewListStage = reviewService.fetchReviewsList("movie", id);
                 try {
                     o.put("reviewsSentiment",
-                            reviewService.extractSentiment(reviewListStage.toCompletableFuture().get()));
+                            reviewService.extractSentiment(reviewListStage.toCompletableFuture().get(), id).getOverallSentiment());
                 } catch (Exception e) {
                     System.err.println("Error when trying to complete the promise for reviews (movies).");
                 }
@@ -203,7 +205,7 @@ public class TmdbSearchService {
                 reviewListStage = reviewService.fetchReviewsList("tv", id);
                 try {
                     o.put("reviewsSentiment",
-                            reviewService.extractSentiment(reviewListStage.toCompletableFuture().get()));
+                            reviewService.extractSentiment(reviewListStage.toCompletableFuture().get(), id).getOverallSentiment());
                 } catch (Exception e) {
                     System.err.println("Error when trying to complete the promise for reviews (tv shows).");
                 }
