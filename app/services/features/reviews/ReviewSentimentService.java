@@ -262,7 +262,7 @@ public class ReviewSentimentService {
         // little debug confirmation
         // System.out.print((posScore + negScore + neutralScore + empty == reviewsList.size()) ? "ALL IS GOOD" : "SOMEHOW THE COUNT IS OFF, AHHHHHHHHHHHHHHHHHHHHHHH");
         int threshold = (int)Math.floor((reviewsList.size()) * 0.7f);
-        System.out.println(" - thresh: " + threshold + ", pos: " + posScore + ", neg: " + negScore + ", neutral: " + neutralScore);
+        // System.out.println(" - thresh: " + threshold + ", pos: " + posScore + ", neg: " + negScore + ", neutral: " + neutralScore);
 
         if (posScore >= threshold)
             overall =  ":-)";
