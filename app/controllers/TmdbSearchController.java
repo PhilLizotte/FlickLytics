@@ -12,6 +12,9 @@ import models.dto.GlobalDiversityStats;
 import services.features.diversity.GlobalDiversityService;
 import services.features.personstats.PersonStatsService;
 import services.features.readability.ReadabilityService;
+import services.features.reviews.ReviewSentimentService;
+import models.domain.Review;
+
 import services.tmdb.TmdbSearchService;
 
 public class TmdbSearchController extends Controller {
@@ -19,6 +22,7 @@ public class TmdbSearchController extends Controller {
     private final PersonStatsService personStatsService;
     private final ReadabilityService readabilityService;
     private final GlobalDiversityService globalDiversityService;
+    private final ReviewSentimentService reviewSentimentService;
 
     @Inject
     public TmdbSearchController(
@@ -26,11 +30,12 @@ public class TmdbSearchController extends Controller {
             PersonStatsService personStatsService,
             ReadabilityService readabilityService,
             GlobalDiversityService globalDiversityService
-    ) {
+    , ReviewSentimentService reviewSentimentService) {
         this.tmdbSearchService = tmdbSearchService;
         this.personStatsService = personStatsService;
         this.readabilityService = readabilityService;
         this.globalDiversityService = globalDiversityService;
+        this.reviewSentimentService = reviewSentimentService;
     }
 
     public Result index() {
@@ -123,5 +128,17 @@ public class TmdbSearchController extends Controller {
                             gradeLevel
                     ));
                 });
+    }
+
+    public CompletionStage<Result> reviewDetails(String kind, Integer id, String title) {
+        return reviewSentimentService.fetchReviewsList(kind, id)
+            .thenApply(r -> {
+                Review review = reviewSentimentService.extractSentiment(r, id);
+
+                return ok(views.html.reviews.render(
+                    title,
+                    review
+                ));
+            });
     }
 }

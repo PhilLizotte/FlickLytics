@@ -13,6 +13,8 @@ import java.util.Set;
 // import java.util.Collection.stream;
 import java.util.stream.Collectors;
 
+import models.domain.Review;
+
 import services.tmdb.TmdbConfig;
 
 /**
@@ -125,19 +127,18 @@ public class ReviewSentimentService {
      * @param reviewsList The list of reviews that are to be analyzed
      * @return An emoticon representing the review sentiment
      */
-    public String extractSentiment(ArrayList<String> reviewsList) {
+    public Review extractSentiment(ArrayList<String> reviewsList, int id) {
         int posScore = 0;
         int negScore = 0;
         int neutralScore = 0;
-        int empty = 0;
 
         int score;
         String[] split;
+        ArrayList<String> sentiments = new ArrayList<>();
+        String overall = ":|";
 
         boolean negate = false;
 
-        if (reviewsList.isEmpty())
-            return "? (no reviews!)";
 
         // Since streams can only return a single value but I want 4 distinct counters, I'm packing the 
         // counters into a single value. This is a type of encoding. This works because I know that there 
@@ -153,6 +154,8 @@ public class ReviewSentimentService {
         // I am aware that this is likely not what the prof had in mind. But, I am undoubtedly using
         // streams to process the data and it works, so I see no problems. 
 
+
+        /*
         int out1 = reviewsList.stream()
                 .mapToInt(r -> {
                     List<String> split2 = Arrays.asList(r.toLowerCase().replaceAll("[^a-zé\\-\\s]", "").split(" "));
@@ -205,10 +208,6 @@ public class ReviewSentimentService {
         out1 -= (neuS * 100);
         int emp = out1;
 
-
-
-
-
         int thresh = (int)Math.floor((reviewsList.size() - emp) * 0.7f);
         // debug confirmation line
         // System.out.println("thresh: " + thresh + ", posS: " + posS + ", negS: " + negS + ", neuS: " + neuS);
@@ -220,57 +219,59 @@ public class ReviewSentimentService {
         else
             return ":|";
 
+        */
 
-        // for (String review : reviewsList)
-        // {
-        //     score = 0;
-        //     split = review.toLowerCase().replaceAll("[^a-zé\\-\\s]", "").split(" ");
-        //     if (split.length == 0)
-        //     {
-        //         empty++;
-        //         continue;
-        //     }
+        for (String review : reviewsList)
+        {
+            score = 0;
+            split = review.toLowerCase().replaceAll("[^a-zé\\-\\s]", "").split(" ");
             
-        //     for (String word : split)
-        //     {
-        //         // if (negations.contains(word))
-        //         // {
-        //         //     negate = true;
-        //         //     continue;
-        //         // }
+            for (String word : split)
+            {
+                if (negations.contains(word))
+                {
+                    negate = true;
+                    continue;
+                }
 
-        //         if (posList.contains(word))
-        //             score += !negate ? 1 : -1;
-        //         else if (negList.contains(word))
-        //             score += !negate ? -1 : 1;
+                if (posList.contains(word))
+                    score += !negate ? 1 : -1;
+                else if (negList.contains(word))
+                    score += !negate ? -1 : 1;
 
-        //         negate = false;
-        //     }
+                negate = false;
+            }
 
-        //     if (score > 0)
-        //         posScore++;
-        //     else if (score < 0)
-        //         negScore++;
-        //     else 
-        //         neutralScore++;
-        // }
+            if (score > 0)
+            {
+                posScore++;
+                sentiments.add(":-)");
+            }
+            else if (score < 0)
+            {
+                negScore++;
+                sentiments.add(":-(");
+            }
+            else
+            {
+                neutralScore++;
+                sentiments.add(":|");
+            } 
+        }
 
-        // // little debug confirmation
-        // // System.out.print((posScore + negScore + neutralScore + empty == reviewsList.size()) ? "ALL IS GOOD" : "SOMEHOW THE COUNT IS OFF, AHHHHHHHHHHHHHHHHHHHHHHH");
-        // int threshold = (int)Math.floor((reviewsList.size() - empty) * 0.7f);
-        // System.out.println(" - thresh: " + threshold + ", pos: " + posScore + ", neg: " + negScore + ", neutral: " + neutralScore + ", empty: " + empty);
+        // little debug confirmation
+        // System.out.print((posScore + negScore + neutralScore + empty == reviewsList.size()) ? "ALL IS GOOD" : "SOMEHOW THE COUNT IS OFF, AHHHHHHHHHHHHHHHHHHHHHHH");
+        int threshold = (int)Math.floor((reviewsList.size()) * 0.7f);
+        // System.out.println(" - thresh: " + threshold + ", pos: " + posScore + ", neg: " + negScore + ", neutral: " + neutralScore);
 
-        // if (posScore >= threshold)
-        // {
-        //     System.out.println("OUTPUT: " + output + ", STANDARD: :-)");
-        //     return ":-)";
-        // }
-        // else if (negScore >= threshold)
-        // {
-        //     System.out.println("OUTPUT: " + output + ", STANDARD: :-(");
-        //     return ":-(";
-        // }
-        // System.out.println("OUTPUT: " + output + ", STANDARD: :|");
-        // return ":|";
+        if (posScore >= threshold)
+            overall =  ":-)";
+        else if (negScore >= threshold)
+            overall =  ":-(";
+        
+        return new Review(id, posScore, negScore, neutralScore, overall, reviewsList, sentiments);
     }
+
+    
+
 }
