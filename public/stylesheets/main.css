@@ -1,4 +1,14 @@
 body {
-    background-color: #090424;
+    background-color: #1f1f1f;
     color: white;
+}
+
+/* unvisited link */
+a:link {
+  color: #61d0f0;
+}
+
+/* visited link */
+a:visited {
+  color: #9a61f0;
 }
