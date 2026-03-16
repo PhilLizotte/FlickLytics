@@ -7,19 +7,33 @@ import play.mvc.Result;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import services.features.financial.FinancialPerformanceService;
 import services.features.personstats.PersonStatsService;
 import services.features.readability.ReadabilityService;
 import services.tmdb.TmdbSearchService;
 
+/**
+ * Controller providing TMDb search and detail endpoints.
+ * <p>
+ * Exposes endpoints for search, movie/TV details, finances, and the person known-for page.
+ * Delegates data fetching and computations to the corresponding services.
+ * </p>
+ *
+ *
+ */
 public class TmdbSearchController extends Controller {
     private final TmdbSearchService tmdbSearchService;
+    private final FinancialPerformanceService fpService;
     private final PersonStatsService personStatsService;
     private final ReadabilityService readabilityService;
 
     @Inject
-    public TmdbSearchController(TmdbSearchService tmdbSearchService, PersonStatsService personStatsService,
+    public TmdbSearchController(TmdbSearchService tmdbSearchService,
+                                FinancialPerformanceService fpService,
+                                PersonStatsService personStatsService,
                                 ReadabilityService readabilityService) {
         this.tmdbSearchService = tmdbSearchService;
+        this.fpService = fpService;
         this.personStatsService = personStatsService;
         this.readabilityService = readabilityService;
     }
@@ -30,7 +44,8 @@ public class TmdbSearchController extends Controller {
 
     public CompletionStage<Result> knownFor(Integer id) {
         return personStatsService.getKnownForPage(id)
-                .thenApply(page -> ok(views.html.personKnownFor.render(id, page.getItems(), page.getPopularityStats(), page.getVoteAverageStats(), page.getVoteCountStats())));
+                .thenApply(page -> ok(views.html.personKnownFor.render(id, page.getItems(), page.getPopularityStats(), page.getVoteAverageStats(), page.getVoteCountStats())))
+                .exceptionally(ex -> internalServerError("Failed to load known-for page"));
     }
 
     public CompletionStage<Result> search(String category, String query) {
@@ -44,6 +59,30 @@ public class TmdbSearchController extends Controller {
         return tmdbSearchService.search(category, query)
                 .thenApply((JsonNode json) -> ok(json))
                 .exceptionally(ex -> badRequest("Invalid category"));
+    }
+
+    public CompletionStage<Result> finances(int id) {
+        return fpService.searchMovieById(id)
+                .handle((json, ex) -> {
+                    if (ex != null) {
+                        return badRequest("Movie not found");
+                    }
+
+                    String title = json.path("title").asText();
+                    String netProfit = json.path("netProfit").asText();
+                    boolean validROI = json.path("validROI").asBoolean();
+                    String roiPercent = json.path("roiPercent").asText() + "%";
+                    if (!validROI) roiPercent = "Unknown; This movie has no recorded budget.";
+                    String financialRating = json.path("financialRating").asText();
+
+                    return ok(views.html.financialPerformance.render(title, netProfit, roiPercent, financialRating));
+                });
+    }
+
+    public CompletionStage<Result> searchMovieById(int id) {
+        return fpService.searchMovieById(id)
+                .thenApply((JsonNode json) -> ok(json))
+                .exceptionally(ex -> badRequest("Unknown movie ID"));
     }
 
     /**
