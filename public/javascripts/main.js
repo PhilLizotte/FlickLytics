@@ -173,23 +173,13 @@ function performSearch() {
                     // no need to check here if the category is movie/tv as that check is already done a while ago
                     li.appendChild(document.createElement("br"));
                     const review = document.createElement("a");
-                    review.href = "/reviews/" + category + "/" + item.id + "/" + item.title;
-                    review.innerText = "Overall review sentiment: " + item.reviewsSentiment;
+                    // movie titles are item.title, but tv show titles are item.name
+                    review.href = "/reviews/" + category + "/" + item.id + "/" + (category === "movie" ? item.title : item.name);
+                    review.innerText = "View review sentiments";
                     li.appendChild(review);
-
-
 
                     const fpLinkSpan = document.createElement("span");
                     fpLinkSpan.className = "financial_" + category + item.id;
-
-                    // NOTE:: Craig changed the way the financial performance bit was displayed because it was indented and had extra blank space underneath it. 
-                    // I find the way I changed it to makes it look better. 
-                    // But, I left the original here commented out anyway becuase I don't want to delete something that someone else did. 
-
-                    // const entryList = document.createElement("ul");
-                    // entryList.appendChild(
-                        // document.createElement("li").appendChild(fpLinkSpan),
-                    // );
 
                     li.appendChild(document.createElement("br"));
                     li.appendChild(fpLinkSpan);

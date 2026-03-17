@@ -127,6 +127,6 @@ public class Review {
      */
     public String getSentimentAtIndex(int index)
     {
-        return  sentiments.get(index);
+        return sentiments.get(index);
     }
 }
