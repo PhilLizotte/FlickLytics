@@ -29,8 +29,7 @@ public class TmdbSearchController extends Controller {
             TmdbSearchService tmdbSearchService,
             PersonStatsService personStatsService,
             ReadabilityService readabilityService,
-            GlobalDiversityService globalDiversityService
-    , ReviewSentimentService reviewSentimentService) {
+            GlobalDiversityService globalDiversityService, ReviewSentimentService reviewSentimentService) {
         this.tmdbSearchService = tmdbSearchService;
         this.personStatsService = personStatsService;
         this.readabilityService = readabilityService;
@@ -49,8 +48,7 @@ public class TmdbSearchController extends Controller {
                         page.getItems(),
                         page.getPopularityStats(),
                         page.getVoteAverageStats(),
-                        page.getVoteCountStats()
-                )));
+                        page.getVoteCountStats())));
     }
 
     public CompletionStage<Result> search(String category, String query) {
@@ -75,9 +73,7 @@ public class TmdbSearchController extends Controller {
         }
 
         return globalDiversityService.compute(category, id)
-                .thenApply((GlobalDiversityStats stats) ->
-                        ok(views.html.globalDiversity.render(stats))
-                );
+                .thenApply((GlobalDiversityStats stats) -> ok(views.html.globalDiversity.render(stats)));
     }
 
     /**
@@ -86,22 +82,20 @@ public class TmdbSearchController extends Controller {
      * and renders the movieDetails view.
      *
      * @param id the unique identifier of the movie
-     * @return a CompletionStage that will complete with an HTTP Result rendering the movieDetails page
+     * @return a CompletionStage that will complete with an HTTP Result rendering
+     *         the movieDetails page
      */
     public CompletionStage<Result> movieDetails(Integer id) {
         return tmdbSearchService.movieDetails(id)
                 .thenApply(movie -> {
-                    double readingScore =
-                            readabilityService.calculateFleschReaddingEase(movie.getOverview());
+                    double readingScore = readabilityService.calculateFleschReaddingEase(movie.getOverview());
 
-                    double gradeLevel =
-                            readabilityService.calculateFleschKincaidGradeLevel(movie.getOverview());
+                    double gradeLevel = readabilityService.calculateFleschKincaidGradeLevel(movie.getOverview());
 
                     return ok(views.html.movieDetails.render(
                             movie,
                             readingScore,
-                            gradeLevel
-                    ));
+                            gradeLevel));
                 });
     }
 
@@ -111,34 +105,29 @@ public class TmdbSearchController extends Controller {
      * and renders the tvDetails view.
      *
      * @param id the unique identifier of the TV show
-     * @return a CompletionStage that will complete with an HTTP Result rendering the tvDetails page
+     * @return a CompletionStage that will complete with an HTTP Result rendering
+     *         the tvDetails page
      */
     public CompletionStage<Result> tvDetails(Integer id) {
         return tmdbSearchService.tvDetails(id)
                 .thenApply(tvShow -> {
-                    double readingScore =
-                            readabilityService.calculateFleschReaddingEase(tvShow.getOverview());
-                    
-                    double gradeLevel =
-                            readabilityService.calculateFleschKincaidGradeLevel(tvShow.getOverview());
+                    double readingScore = readabilityService.calculateFleschReaddingEase(tvShow.getOverview());
+
+                    double gradeLevel = readabilityService.calculateFleschKincaidGradeLevel(tvShow.getOverview());
 
                     return ok(views.html.tvDetails.render(
                             tvShow,
                             readingScore,
-                            gradeLevel
-                    ));
+                            gradeLevel));
                 });
     }
 
     public CompletionStage<Result> reviewDetails(String kind, Integer id, String title) {
-        return reviewSentimentService.fetchReviewsList(kind, id)
-            .thenApply(r -> {
-                Review review = reviewSentimentService.extractSentiment(r, id);
-
-                return ok(views.html.reviews.render(
-                    title,
-                    review
-                ));
-            });
+        return reviewSentimentService.fetchReviews(kind, id)
+                .thenApply(reviews -> {
+                    return ok(views.html.reviews.render(
+                            title,
+                            reviews));
+                });
     }
 }
