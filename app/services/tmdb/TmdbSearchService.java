@@ -181,48 +181,19 @@ public class TmdbSearchService {
 
             int id = o.hasNonNull("id") ? o.get("id").asInt() : -1;
 
-            CompletionStage<ArrayList<String>> reviewListStage;
 
             if ("movie".equalsIgnoreCase(category)) {
                 o.put("detailsUrl", "https://www.themoviedb.org/movie/" + id);
 
-                // GENRES
                 addGenreNames(o, genreMap);
-
-                // BUG:: This is currently blocking code. I'll fix that for a later submission. 
-                // REVIEWS
-                // HACK:: If anyone knows of a better way to get at the results here, that would
-                // be super greatly appreciated.
-                // I spent a couple hours trying to figure it out and failed.
-                // A big difference between the reviews and the genres is that I need the
-                // movie/tv ID to get the reviews,
-                // so I can't do it the same way it's done for genres as the ID is only fetched
-                // as part of the enrichment process.
-                reviewListStage = reviewService.fetchReviewsList("movie", id);
-                try {
-                    o.put("reviewsSentiment",
-                            reviewService.extractSentiment(reviewListStage.toCompletableFuture().get(), id).getOverallSentiment());
-                } catch (Exception e) {
-                    System.err.println("Error when trying to complete the promise for reviews (movies).");
-                }
-
                 normalizeCommonMovieTvFields(o, true);
+
             } else if ("tv".equalsIgnoreCase(category)) {
                 o.put("detailsUrl", "https://www.themoviedb.org/tv/" + id);
 
-                // GENRES
                 addGenreNames(o, genreMap);
-
-                // REVIEWS
-                reviewListStage = reviewService.fetchReviewsList("tv", id);
-                try {
-                    o.put("reviewsSentiment",
-                            reviewService.extractSentiment(reviewListStage.toCompletableFuture().get(), id).getOverallSentiment());
-                } catch (Exception e) {
-                    System.err.println("Error when trying to complete the promise for reviews (tv shows).");
-                }
-
                 normalizeCommonMovieTvFields(o, false);
+
             } else if ("person".equalsIgnoreCase(category)) {
                 o.put("photoUrl", profileUrl(o));
                 o.put("knownForUrl", "https://www.themoviedb.org/person/" + id + "#known_for");
