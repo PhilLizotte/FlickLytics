@@ -52,3 +52,19 @@ a {
 a:hover {
   text-decoration: underline;
 }
+
+.global-diversity-btn {
+  display: inline-block;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: #e91e63;
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+  border: none;
+}
+
+.global-diversity-btn:hover {
+  background: #d81b60;
+  text-decoration: none;
+}
