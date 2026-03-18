@@ -132,7 +132,6 @@ public class TmdbSearchControllerTest extends WithApplication {
                                 .uri("/api/search?category=movie&query=test");
 
                 Result result = route(app, request);
-                System.out.println(result);
                 assertEquals(OK, result.status());
         }
 

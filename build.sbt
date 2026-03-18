@@ -19,6 +19,12 @@ jacocoExcludes := Seq(
   "models.dto.TVShowSearchResponseDTO",
   "models.dto.PersonSearchResponseDTO",
   "views.*",
+  "router.*",
+  "controllers.javascript.*",
+  "controllers.ReverseTmdbSearchController",
+  "controllers.routes",
+  "controllers.routes.javascript.*",
+  "controllers.ReverseAssets"
 )
 
 addCommandAlias("javadoc", "doc")

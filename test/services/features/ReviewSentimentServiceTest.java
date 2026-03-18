@@ -440,10 +440,6 @@ public class ReviewSentimentServiceTest extends WithApplication {
 
         review = reviewStage.toCompletableFuture().get();
 
-        // System.out.println("************REVIEW: happy: " + review.getHappy() + ",
-        // sad: " + review.getSad(), ", neu: "
-        // + review.getNeutral() + ", tot: " + review.getTotal() + ", overall: ");
-
         String[] expected = { ":-)", ":|", ":-)", ":|", ":-)", ":-(" };
 
         // check all the reviews
