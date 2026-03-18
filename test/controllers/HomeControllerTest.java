@@ -8,24 +8,29 @@ import org.mockito.Mockito;
 import play.Application;
 import play.api.test.Helpers;
 import play.inject.guice.GuiceApplicationBuilder;
+import play.libs.ws.WSClient;
+import play.libs.ws.WSRequest;
+import play.libs.ws.WSResponse;
 import play.mvc.Http;
 import play.mvc.Result;
 import play.test.WithApplication;
 import services.features.financial.FinancialPerformanceService;
 import services.features.personstats.PersonStatsService;
 import services.features.readability.ReadabilityService;
+import services.tmdb.TmdbConfig;
 import services.tmdb.TmdbSearchService;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertNotEquals;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static play.mvc.Http.Status.OK;
+import static play.mvc.Results.status;
 import static play.test.Helpers.*;
 
 /** A page that tests all methods in HomeController.java.</br>
@@ -38,7 +43,10 @@ public class HomeControllerTest extends WithApplication {
     private static TmdbSearchService tmdbSearchService;
     private static PersonStatsService personStatsService;
     private static ReadabilityService readabilityService;
+    
     private static FinancialPerformanceService fpService;
+
+    private final ObjectMapper mapper = new ObjectMapper();
 
     private JsonNode resultJson(Result result) throws Exception {
         return new ObjectMapper().readTree(contentAsString(result));
@@ -46,10 +54,12 @@ public class HomeControllerTest extends WithApplication {
 
     @Before
     public void setup() {
+        
         tmdbSearchService = mock(TmdbSearchService.class);
         personStatsService = mock(PersonStatsService.class);
         readabilityService = mock(ReadabilityService.class);
         fpService = mock(FinancialPerformanceService.class);
+        
         controller = new TmdbSearchController(
                 tmdbSearchService, personStatsService, readabilityService, fpService
         );
@@ -62,6 +72,8 @@ public class HomeControllerTest extends WithApplication {
 
     @Test
     public void testIndex() {
+        setup();
+        
         Http.RequestBuilder request = new Http.RequestBuilder()
                 .method(GET)
                 .uri("/");
@@ -72,6 +84,8 @@ public class HomeControllerTest extends WithApplication {
     
     @Test
     public void testKnownFor() {
+        setup();
+        
         // Valid request
         Http.RequestBuilder request = new Http.RequestBuilder()
                 .method(GET)
@@ -80,29 +94,60 @@ public class HomeControllerTest extends WithApplication {
         Result result = route(app, request);
         assertEquals(OK, result.status());
     }
-    
-    @Test
-    public void testFinances() {
-        // Valid request
-        Http.RequestBuilder request = new Http.RequestBuilder()
-            .method(GET)
-            .uri("/finances/11");
 
-        Result result = route(app, request);
-        assertEquals(OK, result.status());
+    @Test 
+    public void testFinances() throws Exception {
+
+        // --- Arrange ---
+        JsonNode fakeJson = mapper.readTree("""
+        {
+          "title": "TestMovie",
+          "netProfit": "1000000",
+          "roiPercent": "150",
+          "financialRating": "Profitable"
+        }
+        """);
+
+        when(fpService.getMovieFinances(100))
+                .thenReturn(CompletableFuture.completedFuture(fakeJson));
+
+        // --- Act ---
+        CompletionStage<Result> resultStage = controller.finances(100);
+        Result result = resultStage.toCompletableFuture().join();
+
+        // --- Assert ---
+        assertEquals(200, result.status());
+
+        String body = contentAsString(result);
+
+        // Because this returns HTML (Twirl template), check content:
+        assertTrue(body.contains("TestMovie"));
+        assertTrue(body.contains("1000000"));
+        assertTrue(body.contains("150%"));
+        assertTrue(body.contains("Profitable"));
         
-        // Invalid id
-        request = new Http.RequestBuilder()
-                .method(GET)
-                .uri("/finances/-1");
+        // Invalid case
+        // --- Arrange ---
+        when(fpService.getMovieFinances(anyInt()))
+                .thenReturn(CompletableFuture.failedFuture(
+                        new RuntimeException("API error")
+                ));
 
-        result = route(app, request);
-        assertNotEquals(OK, result.status());
+        // --- Act ---
+        result = controller.finances(100)
+                .toCompletableFuture()
+                .join();
+
+        // --- Assert ---
+        assertEquals(400, result.status());
+
+        body = contentAsString(result);
+        assertTrue(body.contains("Movie not found"));
     }
 
     @Test
     public void testSearch() throws Exception {
-        ObjectMapper mapper = new ObjectMapper();
+        
         JsonNode fakeJson = mapper.readTree("""
             { "results": [ { "title": "TestMovie"} ] }
         """);
@@ -133,7 +178,7 @@ public class HomeControllerTest extends WithApplication {
         assertEquals(400, result.status());
 
         // Invalid category test
-        when(controller.search(anyString(), anyString()))
+        when(tmdbSearchService.search(anyString(), anyString()))
                 .thenReturn(CompletableFuture.failedFuture(
                         new RuntimeException("API error")
                 ));

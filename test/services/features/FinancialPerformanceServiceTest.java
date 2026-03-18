@@ -2,6 +2,7 @@ package services.features;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.Before;
 import org.junit.Test;
 import play.Application;
 import play.libs.ws.WSClient;
@@ -11,9 +12,9 @@ import play.inject.guice.GuiceApplicationBuilder;
 import play.test.WithApplication;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 import services.features.financial.FinancialPerformanceService;
 import services.tmdb.TmdbConfig;
@@ -22,6 +23,25 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 public class FinancialPerformanceServiceTest extends WithApplication {
+
+    private WSClient ws;
+    private WSRequest request;
+    private WSResponse response;
+    private TmdbConfig config;
+
+    private FinancialPerformanceService service;
+
+    private ObjectMapper mapper = new ObjectMapper();
+
+    @Before
+    public void setup() {
+        ws = mock(WSClient.class);
+        request = mock(WSRequest.class);
+        response = mock(WSResponse.class);
+        config = mock(TmdbConfig.class);
+
+        service = new FinancialPerformanceService(ws, config);
+    }
     
     @Override
     protected Application provideApplication() {
@@ -30,45 +50,67 @@ public class FinancialPerformanceServiceTest extends WithApplication {
 
     @Test
     public void testGetMovieFinances() throws Exception {
-        // Mock dependencies
-        WSClient ws = mock(WSClient.class);
-        WSRequest request = mock(WSRequest.class);
-        WSResponse response = mock(WSResponse.class);
-        TmdbConfig config = mock(TmdbConfig.class);
 
+        // --- Arrange ---
         when(config.getBaseUrl()).thenReturn("https://api.test.com");
         when(config.getRaToken()).thenReturn("fakeToken");
 
-        // Fake JSON returned by API
-        String json = """
+        JsonNode apiJson = mapper.readTree("""
         {
-            "revenue": 1000000,
-            "budget": 500000
+          "title": "TestMovie",
+          "budget": 500000,
+          "revenue": 1500000
         }
-        """;
+        """);
 
-        ObjectMapper mapper = new ObjectMapper();
-        JsonNode jsonNode = mapper.readTree(json);
+        when(response.asJson()).thenReturn(apiJson);
 
-        when(response.asJson()).thenReturn(jsonNode);
-
-        // Stub WS chain
         when(ws.url(anyString())).thenReturn(request);
         when(request.addHeader(anyString(), anyString())).thenReturn(request);
         when(request.get()).thenReturn(
                 CompletableFuture.completedFuture(response)
         );
 
-        FinancialPerformanceService service =
-                new FinancialPerformanceService(ws, config);
+        // --- Act ---
+        JsonNode result = service.getMovieFinances(100)
+                .toCompletableFuture()
+                .join();
 
-        CompletionStage<JsonNode> resultStage =
-                service.getMovieFinances(123);
+        // --- Assert ---
+        assertEquals("TestMovie", result.get("title").asText());
 
-        JsonNode result = resultStage.toCompletableFuture().join();
+        // netProfit = 1,500,000 - 500,000 = 1,000,000
+        assertEquals(1000000, result.get("netProfit").asInt());
 
-        // Assertions
-        assertEquals(500000, result.get("netProfit").asInt());
-        assertEquals(100.0, result.get("roi").asDouble());
+        // ROI = 200.00
+        assertEquals("200.00", result.get("roiPercent").asText());
+
+        // ROI = 200 → "High Return" (based on your logic)
+        assertEquals("High Return", result.get("financialRating").asText());
+
+        verify(ws).url("https://api.test.com/movie/100");
+        
+        // Zero budget edge case
+        apiJson = mapper.readTree("""
+        {
+          "title": "TestMovie",
+          "budget": 0,
+          "revenue": 1000000
+        }
+        """);
+
+        when(response.asJson()).thenReturn(apiJson);
+        when(ws.url(anyString())).thenReturn(request);
+        when(request.addHeader(anyString(), anyString())).thenReturn(request);
+        when(request.get()).thenReturn(
+                CompletableFuture.completedFuture(response)
+        );
+
+        result = service.getMovieFinances(1)
+                .toCompletableFuture()
+                .join();
+
+        assertEquals("Unknown", result.get("financialRating").asText());
+        assertTrue(result.get("roiPercent").asText().contains("Unknown"));
     }
 }
