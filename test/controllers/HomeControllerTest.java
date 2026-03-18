@@ -52,6 +52,9 @@ public class HomeControllerTest extends WithApplication {
         return new ObjectMapper().readTree(contentAsString(result));
     }
 
+    /**
+     * Sets up mock-ups for every service used by the controller
+     */
     @Before
     public void setup() {
         
@@ -95,6 +98,14 @@ public class HomeControllerTest extends WithApplication {
         assertEquals(OK, result.status());
     }
 
+    /**
+     * Tests the finances() method for two test cases. The first case is when
+     * an id of an existing movie is requested. The second is when an id with no
+     * movie is requested.
+     * 
+     * @throws Exception Exception is thrown if a fault occurs within the object mapper.
+     * @author Philippe Lizotte
+     */
     @Test 
     public void testFinances() throws Exception {
 
@@ -144,6 +155,15 @@ public class HomeControllerTest extends WithApplication {
         body = contentAsString(result);
         assertTrue(body.contains("Movie not found"));
     }
+
+    /**
+     * Tests the search() method for four cases; If the fields are all valid, if field 1
+     * is missing, if field 2 is missing, if field 1 is invalid.
+     *
+     * @throws Exception Exception is thrown if a fault occurs within the object mapper.
+     * @author aliiimaher
+     * @author Philippe Lizotte
+     */
 
     @Test
     public void testSearch() throws Exception {

@@ -22,6 +22,11 @@ import services.tmdb.TmdbConfig;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
+/**
+ * Test suite for testing services/financial/FinancialPerformanceService in the main app
+ * 
+ * @author Philippe Lizotte
+ */
 public class FinancialPerformanceServiceTest extends WithApplication {
 
     private WSClient ws;
@@ -33,6 +38,9 @@ public class FinancialPerformanceServiceTest extends WithApplication {
 
     private ObjectMapper mapper = new ObjectMapper();
 
+    /**
+     * Basic wrapper function that sets up mock services and an instance of FinancialPerformanceService using these mock-ups.
+     */
     @Before
     public void setup() {
         ws = mock(WSClient.class);
@@ -48,6 +56,15 @@ public class FinancialPerformanceServiceTest extends WithApplication {
         return new GuiceApplicationBuilder().build();
     }
 
+
+    /**
+     * Tests the method getMovieFinances under two test cases:
+     * The first test case is for when the budget is greater than zero,
+     * allowing the ROI percent to be calculable. The second test case is
+     * for when the budget is zero.
+     *
+     * @throws Exception Exception is thrown if a fault occurs within the object mapper.
+     */
     @Test
     public void testGetMovieFinances() throws Exception {
 
