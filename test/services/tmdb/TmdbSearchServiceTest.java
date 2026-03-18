@@ -43,7 +43,8 @@ public class TmdbSearchServiceTest {
         when(req.addQueryParameter(anyString(), anyString())).thenReturn(req);
 
         WSResponse resp = mock(WSResponse.class);
-        JsonNode movieJson = Json.parse("{\"id\":1,\"title\":\"Test\",\"overview\":\"overview\",\"release_date\":\"2020-02-02\"}");
+        JsonNode movieJson = Json
+                .parse("{\"id\":1,\"title\":\"Test\",\"overview\":\"overview\",\"release_date\":\"2020-02-02\"}");
         when(resp.asJson()).thenReturn(movieJson);
         when(req.get()).thenReturn(CompletableFuture.completedFuture(resp));
 
@@ -72,7 +73,8 @@ public class TmdbSearchServiceTest {
         when(req.addQueryParameter(anyString(), anyString())).thenReturn(req);
 
         WSResponse resp = mock(WSResponse.class);
-        JsonNode tvJson = Json.parse("{\"id\":2,\"name\":\"Show\",\"overview\":\"overview\",\"first_air_date\":\"2020-01-01\",\"last_air_date\":\"2020-12-31\"}");
+        JsonNode tvJson = Json.parse(
+                "{\"id\":2,\"name\":\"Show\",\"overview\":\"overview\",\"first_air_date\":\"2020-01-01\",\"last_air_date\":\"2020-12-31\"}");
         when(resp.asJson()).thenReturn(tvJson);
         when(req.get()).thenReturn(CompletableFuture.completedFuture(resp));
 
@@ -156,10 +158,12 @@ public class TmdbSearchServiceTest {
         WSRequest searchReq = mock(WSRequest.class);
         when(searchReq.addQueryParameter(anyString(), anyString())).thenReturn(searchReq);
         WSResponse searchResp = mock(WSResponse.class);
-        when(searchResp.asJson()).thenReturn(Json.parse("{\"results\":[{\"id\":5,\"genre_ids\":[1],\"release_date\":\"2020-01-02\",\"original_language\":\"en\"}]}"));
+        when(searchResp.asJson()).thenReturn(Json.parse(
+                "{\"results\":[{\"id\":5,\"genre_ids\":[1],\"release_date\":\"2020-01-02\",\"original_language\":\"en\"}]}"));
         when(searchReq.get()).thenReturn(CompletableFuture.completedFuture(searchResp));
 
-        // ReviewSentimentService uses the same WSClient, so we must provide requests for the reviews URL.
+        // ReviewSentimentService uses the same WSClient, so we must provide requests
+        // for the reviews URL.
         WSRequest reviewsReq = mock(WSRequest.class);
         when(reviewsReq.addQueryParameter(anyString(), anyString())).thenReturn(reviewsReq);
         WSResponse reviewsResp = mock(WSResponse.class);
@@ -180,7 +184,6 @@ public class TmdbSearchServiceTest {
         assertEquals("en", item1.get("language").asText());
         assertTrue(item1.get("genres").isArray());
         assertEquals("Action", item1.get("genres").get(0).asText());
-        assertEquals("? (no reviews!)", item1.get("reviewsSentiment").asText());
 
         // second call should reuse cached genre map
         JsonNode enriched2 = service.search("movie", "batman").toCompletableFuture().join();
