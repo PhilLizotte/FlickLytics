@@ -124,6 +124,7 @@ function performSearch() {
                     titleLink.target = "_blank";
                     titleLink.rel = "noopener noreferrer";
                     titleLink.innerText = title;
+                    li.style = "margin-bottom: 1em";
                     li.appendChild(titleLink);
 
                     const language =
@@ -151,13 +152,6 @@ function performSearch() {
                         ) ?
                             item.vote_average
                         :   "";
-                    const reviewsSentiment =
-                        (
-                            item.reviewsSentiment !== undefined &&
-                            item.reviewsSentiment !== null
-                        ) ?
-                            item.reviewsSentiment
-                        :   "";
 
                     const meta = document.createElement("span");
 
@@ -172,20 +166,25 @@ function performSearch() {
                         ", Popularity: " +
                         popularity +
                         ", Vote Average: " +
-                        voteAverage +
-                        ", Reviews sentiment: " +
-                        reviewsSentiment;
+                        voteAverage;
                     li.appendChild(meta);
+
+
+                    // no need to check here if the category is movie/tv as that check is already done a while ago
+                    li.appendChild(document.createElement("br"));
+                    const review = document.createElement("a");
+                    // movie titles are item.title, but tv show titles are item.name
+                    review.href = "/reviews/" + category + "/" + item.id + "/" + (category === "movie" ? item.title : item.name);
+                    review.innerText = "View review sentiments";
+                    li.appendChild(review);
 
                     const fpLinkSpan = document.createElement("span");
                     fpLinkSpan.className = "financial_" + category + item.id;
 
-                    const entryList = document.createElement("ul");
-                    entryList.appendChild(
-                        document.createElement("li").appendChild(fpLinkSpan),
-                    );
+                    li.appendChild(document.createElement("br"));
+                    li.appendChild(fpLinkSpan);
 
-                    li.appendChild(entryList);
+                    // li.appendChild(entryList);
                     li.appendChild(document.createElement("br"));
 
                     if (category === "movie") {

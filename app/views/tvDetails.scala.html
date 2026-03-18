@@ -12,6 +12,13 @@
 
         <h1>@tvShow.getName</h1>
 
+        <p>
+            <a class="global-diversity-btn"
+               href="@controllers.routes.TmdbSearchController.globalDiversity("tv", tvShow.getId)">
+                Global Diversity
+            </a>
+        </p>
+
         <p class="tagline">@tvShow.getTagline</p>
 
         <p><b>Overview:</b></p>

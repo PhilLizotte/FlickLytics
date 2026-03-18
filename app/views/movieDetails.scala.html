@@ -12,6 +12,13 @@
 
         <h1>@movie.getName</h1>
 
+        <p>
+            <a class="global-diversity-btn"
+               href="@controllers.routes.TmdbSearchController.globalDiversity("movie", movie.getId)">
+                Global Diversity
+            </a>
+        </p>
+
         <p class="tagline">@movie.getTagline</p>
 
         <p><b>Overview:</b></p>
