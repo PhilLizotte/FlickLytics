@@ -26,6 +26,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Stream;
 
+/**
+ * Service for fetching and computing a person's "known-for" items from TMDb.
+ * <p>
+ * Fetches combined credits, deduplicates results, sorts by most recent release date,
+ * computes summary statistics, and caches results for a short TTL.
+ * </p>
+ *
+ * @author Aram Zand
+ */
 public class PersonStatsService {
 
     private static final long CACHE_TTL_MILLIS = 10 * 60 * 1000L;

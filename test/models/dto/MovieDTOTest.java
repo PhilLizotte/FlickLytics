@@ -15,19 +15,18 @@ import static org.junit.Assert.*;
 public class MovieDTOTest {
 
     /**
-     * Tests the PersonDTO object.
+     * Tests the MovieDTO object.
      * Assigns sample values to fields and checks object is not null.
      */
     @Test
-    public void testPersonDTO() {
-        PersonDTO person = new PersonDTO();
+    public void testMovieDTO() {
+        MovieDTO movie = new MovieDTO();
 
-        person.adult = true;
-        person.gender = 1;
-        person.id = 5;
-        person.name = "Test";
-        person.known_for_department = "Acting";
+        movie.adult = true;
+        movie.id = 5;
+        movie.title = "Test";
+        movie.overview = "Overview";
 
-        assertNotNull(person);
+        assertNotNull(movie);
     }
 }

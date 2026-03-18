@@ -13,11 +13,6 @@ libraryDependencies += "org.mockito" % "mockito-core" % "5.14.1" % Test
 jacocoReportSettings := JacocoReportSettings()
 Test / javaSource := baseDirectory.value / "test"
 jacocoExcludes := Seq(
-  "models.dto.PersonDTO",
-  "models.dto.KnownForDTO",
-  "models.dto.MovieSearchResponseDTO",
-  "models.dto.TVShowSearchResponseDTO",
-  "models.dto.PersonSearchResponseDTO",
   "views.*",
 )
 
