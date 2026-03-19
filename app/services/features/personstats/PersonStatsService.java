@@ -29,7 +29,8 @@ import java.util.stream.Stream;
 /**
  * Service for fetching and computing a person's "known-for" items from TMDb.
  * <p>
- * Fetches combined credits, deduplicates results, sorts by most recent release date,
+ * Fetches combined credits, deduplicates results, sorts by most recent release
+ * date,
  * computes summary statistics, and caches results for a short TTL.
  * </p>
  *
@@ -50,6 +51,11 @@ public class PersonStatsService {
         this.tmdbConfig = tmdbConfig;
     }
 
+    /**
+     * @author Aram Zand
+     * @param personId The id of the person
+     * @return Completion stage of list of KnownFor items
+     */
     public CompletionStage<List<PersonKnownForItemDTO>> getKnownForItems(Integer personId) {
         if (personId == null) {
             return CompletableFuture.completedFuture(List.of());
@@ -73,19 +79,32 @@ public class PersonStatsService {
         });
     }
 
+    /**
+     * @author Aram Zand
+     * @param personId The id of the person
+     * @return Completion stage of single KnownFor item
+     */
     public CompletionStage<PersonKnownForPageDTO> getKnownForPage(Integer personId) {
         return getKnownForItems(personId).thenApply(allItems -> {
             List<PersonKnownForItemDTO> uniqueItems = uniqueItems(allItems);
 
-            PersonKnownForStatsDTO popularityStats = computeDoubleStats(uniqueItems.stream().map(PersonKnownForItemDTO::getPopularity));
-            PersonKnownForStatsDTO voteAverageStats = computeDoubleStats(uniqueItems.stream().map(PersonKnownForItemDTO::getVoteAverage));
-            PersonKnownForStatsDTO voteCountStats = computeIntStats(uniqueItems.stream().map(PersonKnownForItemDTO::getVoteCount));
+            PersonKnownForStatsDTO popularityStats = computeDoubleStats(
+                    uniqueItems.stream().map(PersonKnownForItemDTO::getPopularity));
+            PersonKnownForStatsDTO voteAverageStats = computeDoubleStats(
+                    uniqueItems.stream().map(PersonKnownForItemDTO::getVoteAverage));
+            PersonKnownForStatsDTO voteCountStats = computeIntStats(
+                    uniqueItems.stream().map(PersonKnownForItemDTO::getVoteCount));
 
             List<PersonKnownForItemDTO> latest50Items = latestItems(uniqueItems, 50);
             return new PersonKnownForPageDTO(latest50Items, popularityStats, voteAverageStats, voteCountStats);
         });
     }
 
+    /**
+     * @author Aram Zand
+     * @param combinedCreditsJson Json payload
+     * @return List of KnownFor items extracted from the json payload
+     */
     private List<PersonKnownForItemDTO> extractAllKnownForItems(JsonNode combinedCreditsJson) {
         if (combinedCreditsJson == null || !combinedCreditsJson.isObject()) {
             return List.of();
@@ -105,6 +124,11 @@ public class PersonStatsService {
                 .toList();
     }
 
+    /**
+     * @author Aram Zand
+     * @param items List of KnownFor items
+     * @return List of unique KnownFor items
+     */
     private List<PersonKnownForItemDTO> uniqueItems(List<PersonKnownForItemDTO> items) {
         Set<String> seen = new HashSet<>();
         return items.stream()
@@ -114,6 +138,12 @@ public class PersonStatsService {
                 .toList();
     }
 
+    /**
+     * @author Aram Zand
+     * @param items List of KnownFor items
+     * @param limit Number of entries in output
+     * @return Potentially truncated list
+     */
     private List<PersonKnownForItemDTO> latestItems(List<PersonKnownForItemDTO> items, int limit) {
         Comparator<PersonKnownForItemDTO> byLatestDateDesc = Comparator
                 .comparing((PersonKnownForItemDTO i) -> parseDate(i.getReleaseDate()).orElse(LocalDate.MIN))
@@ -129,21 +159,31 @@ public class PersonStatsService {
                 .toList();
     }
 
+    /**
+     * @author Aram Zand
+     * @param arrayNode ArrayNode of data
+     * @return Stream of data
+     */
     private Stream<JsonNode> streamArray(ArrayNode arrayNode) {
         List<JsonNode> list = new ArrayList<>();
         arrayNode.forEach(list::add);
         return list.stream();
     }
 
+    /**
+     * @author Aram Zand
+     * @param n Json payload
+     * @return Singular KnownFor item
+     */
     private PersonKnownForItemDTO toKnownForItem(JsonNode n) {
         Integer id = n.hasNonNull("id") ? n.get("id").asInt() : null;
         String mediaType = n.hasNonNull("media_type") ? n.get("media_type").asText() : "";
 
-        String title = n.hasNonNull("title") ? n.get("title").asText() :
-                (n.hasNonNull("name") ? n.get("name").asText() : "");
+        String title = n.hasNonNull("title") ? n.get("title").asText()
+                : (n.hasNonNull("name") ? n.get("name").asText() : "");
 
-        String releaseDate = n.hasNonNull("release_date") ? n.get("release_date").asText() :
-                (n.hasNonNull("first_air_date") ? n.get("first_air_date").asText() : "");
+        String releaseDate = n.hasNonNull("release_date") ? n.get("release_date").asText()
+                : (n.hasNonNull("first_air_date") ? n.get("first_air_date").asText() : "");
 
         Double popularity = n.hasNonNull("popularity") ? n.get("popularity").asDouble() : null;
         Double voteAverage = n.hasNonNull("vote_average") ? n.get("vote_average").asDouble() : null;
@@ -158,9 +198,15 @@ public class PersonStatsService {
             tmdbUrl = "https://www.themoviedb.org/movie/" + id;
         }
 
-        return new PersonKnownForItemDTO(id, mediaType, title, releaseDate, popularity, voteAverage, voteCount, tmdbUrl);
+        return new PersonKnownForItemDTO(id, mediaType, title, releaseDate, popularity, voteAverage, voteCount,
+                tmdbUrl);
     }
 
+    /**
+     * @author Aram Zand
+     * @param s Date string
+     * @return Date as a LocalDate object
+     */
     private Optional<LocalDate> parseDate(String s) {
         if (s == null || s.isBlank()) {
             return Optional.empty();
@@ -172,6 +218,11 @@ public class PersonStatsService {
         }
     }
 
+    /**
+     * @author Aram Zand
+     * @param values Stream of data
+     * @return Singular KnownFor item
+     */
     private PersonKnownForStatsDTO computeDoubleStats(Stream<Double> values) {
         DoubleSummaryStatistics stats = values
                 .filter(Objects::nonNull)
@@ -185,6 +236,11 @@ public class PersonStatsService {
         return new PersonKnownForStatsDTO(stats.getCount(), stats.getMin(), stats.getMax(), stats.getAverage());
     }
 
+    /**
+     * @author Aram Zand
+     * @param values Stream of data
+     * @return Singular KnownFor item
+     */
     private PersonKnownForStatsDTO computeIntStats(Stream<Integer> values) {
         IntSummaryStatistics stats = values
                 .filter(Objects::nonNull)
@@ -195,7 +251,8 @@ public class PersonStatsService {
             return new PersonKnownForStatsDTO(0, null, null, null);
         }
 
-        return new PersonKnownForStatsDTO(stats.getCount(), (double) stats.getMin(), (double) stats.getMax(), stats.getAverage());
+        return new PersonKnownForStatsDTO(stats.getCount(), (double) stats.getMin(), (double) stats.getMax(),
+                stats.getAverage());
     }
 
     private static class CacheEntry {
