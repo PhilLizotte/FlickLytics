@@ -45,6 +45,23 @@ public class TmdbSearchService {
         this.reviewService = new ReviewSentimentService(ws, tmdbConfig);
     }
 
+    /**
+     * Performs a search request to TMDb based on the given category and query string.
+     * <p>
+     * This method determines the appropriate TMDb endpoint depending on the category
+     * (movie, tv, or person), fetches the genre mapping if needed, and performs
+     * an asynchronous HTTP request to retrieve search results.
+     * The results are then enriched with additional fields such as genre names
+     * and normalized attributes.
+     * </p>
+     *
+     * @author Aram Zand
+     *
+     * @param category the category to search in (movie, tv, or person)
+     * @param query the search query string
+     * @return a CompletionStage containing the enriched JSON response
+     * @throws IllegalArgumentException if the category is invalid
+     */
     public CompletionStage<JsonNode> search(String category, String query) {
         String endpoint;
         switch (category.toLowerCase()) {
@@ -79,6 +96,19 @@ public class TmdbSearchService {
         }));
     }
 
+    /**
+     * Retrieves the genre mapping (ID → name) for a given media type.
+     * <p>
+     * This method first checks an in-memory cache. If a valid cached entry exists,
+     * it returns it immediately. Otherwise, it fetches the genre list from TMDb,
+     * parses the JSON response, and stores the result in the cache.
+     * </p>
+     *
+     * @author Aram Zand
+     *
+     * @param kind the media type (movie or tv)
+     * @return a CompletionStage containing a map of genre IDs to genre names
+     */
     private CompletionStage<Map<Integer, String>> fetchGenreMap(String kind) {
         GenreCacheEntry cached = genreCache.get(kind);
         if (cached != null && !cached.isExpired()) {
@@ -147,6 +177,16 @@ public class TmdbSearchService {
                 });
     }
 
+    /**
+     * Represents a cached genre mapping entry.
+     * <p>
+     * Stores the genre map along with the timestamp indicating when it was fetched.
+     * Used to determine whether the cache entry is still valid.
+     * </p>
+     *
+     * @author Aram Zand
+     *
+     */
     private static class GenreCacheEntry {
         private final Map<Integer, String> map;
         private final long fetchedAtMillis;
@@ -156,11 +196,36 @@ public class TmdbSearchService {
             this.fetchedAtMillis = fetchedAtMillis;
         }
 
+        /**
+         * Checks whether the cached entry has expired based on TTL.
+         *
+         * @return true if the cache is expired, false otherwise
+         */
         private boolean isExpired() {
             return System.currentTimeMillis() - fetchedAtMillis > GENRE_CACHE_TTL_MILLIS;
         }
     }
 
+
+    /**
+     * Enriches raw TMDb search results with additional computed fields.
+     * <p>
+     * Depending on the category, this method:
+     * <ul>
+     *     <li>Adds a details URL for movies and TV shows</li>
+     *     <li>Adds genre names using the provided genre map</li>
+     *     <li>Normalizes fields such as release date and language</li>
+     *     <li>Adds profile-related URLs for persons</li>
+     * </ul>
+     * </p>
+     *
+     * @author Aram Zand
+     *
+     * @param category the category of the search (movie, tv, person)
+     * @param searchJson the raw JSON response from TMDb
+     * @param genreMap mapping of genre IDs to names
+     * @return enriched JSON node
+     */
     private JsonNode enrichResults(String category, JsonNode searchJson, Map<Integer, String> genreMap) {
         if (searchJson == null || !searchJson.isObject()) {
             return searchJson;
@@ -206,6 +271,21 @@ public class TmdbSearchService {
         return root;
     }
 
+    /**
+     * Normalizes common fields for movie and TV objects.
+     * <p>
+     * Converts TMDb-specific fields into a unified format:
+     * <ul>
+     *     <li>release_date / first_air_date → releaseDate</li>
+     *     <li>original_language → language</li>
+     * </ul>
+     * </p>
+     * 
+     * @author Aram Zand
+     *
+     * @param o the JSON object representing a media item
+     * @param movie true if the item is a movie, false if TV show
+     */
     private void normalizeCommonMovieTvFields(ObjectNode o, boolean movie) {
         if (movie) {
             if (o.hasNonNull("release_date")) {
