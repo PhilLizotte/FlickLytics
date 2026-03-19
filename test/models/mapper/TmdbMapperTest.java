@@ -10,15 +10,21 @@ import java.time.LocalDate;
 
 import static org.junit.Assert.*;
 
+/**
+ * Unit tests for {@link TmdbMapper}.
+ * <p>
+ * Verifies that the mapper correctly converts DTOs (MovieDTO and TVShowDTO)
+ * into their corresponding domain objects (Movie and TVShow).
+ * </p>
+ *
+ * Author: Ali Maher
+ */
 public class TmdbMapperTest {
-    
-    @Test
-    public void testMapper() {
-        // This test is just to ensure that the TmdbMapper class can be instantiated
-        TmdbMapper mapper = new TmdbMapper();
-        assertNotNull(mapper);
-    }
 
+    /**
+     * Tests converting a MovieDTO to a Movie domain object.
+     * Ensures that all relevant fields are mapped correctly.
+     */
     @Test
     public void testToMovie() {
         MovieDTO dto = new MovieDTO();
@@ -37,6 +43,10 @@ public class TmdbMapperTest {
         assertEquals(8.8, movie.getVoteAverage(), 0.01);
     }
 
+    /**
+     * Tests converting a TVShowDTO to a TVShow domain object.
+     * Ensures that all relevant fields are mapped correctly.
+     */
     @Test
     public void testToTVShow() {
         TVShowDTO dto = new TVShowDTO();
