@@ -186,11 +186,9 @@ function performSearch() {
                     const fpLinkSpan = document.createElement("span");
                     fpLinkSpan.className = "financial_" + category + item.id;
 
-                    li.appendChild(document.createElement("br"));
                     li.appendChild(fpLinkSpan);
 
                     // li.appendChild(entryList);
-                    li.appendChild(document.createElement("br"));
 
                     if (category === "movie") {
                         // Generate link to financial information page
