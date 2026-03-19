@@ -1,0 +1,22 @@
+@(stats: models.dto.GlobalDiversityStats)
+
+@main("Global Diversity") {
+  <h1>Global Diversity</h1>
+
+  <p><b>Category:</b> @stats.category</p>
+  <p><b>ID:</b> @stats.id</p>
+
+  @if(stats.category.toLowerCase == "movie") {
+    <p><a href="/movie/@stats.id">View Movie Details</a></p>
+  } else if(stats.category.toLowerCase == "tv") {
+    <p><a href="/tv/@stats.id">View TV Details</a></p>
+  }
+
+  <hr/>
+
+  <p><b>Translation count:</b> @stats.translationCount</p>
+  <p><b>Supported languages (TMDb):</b> @stats.supportedLanguageCount</p>
+
+  <p><b>Translation Density:</b> @("%.4f".format(stats.translationDensity))</p>
+  <p><b>Localization Index:</b> @("%.4f".format(stats.localizationIndex))</p>
+}

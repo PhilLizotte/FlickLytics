@@ -13,7 +13,19 @@ libraryDependencies += "org.mockito" % "mockito-core" % "5.14.1" % Test
 jacocoReportSettings := JacocoReportSettings()
 Test / javaSource := baseDirectory.value / "test"
 jacocoExcludes := Seq(
+  "models.dto.PersonDTO",
+  "models.dto.KnownForDTO",
+  "models.dto.MovieSearchResponseDTO",
+  "models.dto.TVShowSearchResponseDTO",
+  "models.dto.PersonSearchResponseDTO",
   "views.*",
+  "router.*",
+  "controllers.javascript.*",
+  "controllers.ReverseTmdbSearchController",
+  "controllers.routes",
+  "controllers.routes.javascript.*",
+  "controllers.ReverseAssets",
+  "models.mapper.TmdbMapper.this"
 )
 
 addCommandAlias("javadoc", "doc")

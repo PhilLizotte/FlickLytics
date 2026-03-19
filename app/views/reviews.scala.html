@@ -1,0 +1,43 @@
+@import models.domain.Review
+@(title: String, review: Review)
+@import controllers.routes
+
+@main("FlickLytics") {
+  <h2 id="Movie header"><em>@title</em></h2>
+  <div>
+    <b>Overall sentiment: </b>@review.getOverallSentiment()<br/>
+    <b>Happy reviews: </b>@review.getHappy() / @review.getTotal() -> @String.format("%.2f", {review.getHappy() * 100.00 / review.getTotal()})%<br/>
+    <b>Neutral reviews: </b>@review.getNeutral() / @review.getTotal() -> @String.format("%.2f", {review.getNeutral() * 100.00 / review.getTotal()})%<br/>
+    <b>Sad reviews: </b>@review.getSad() / @review.getTotal() -> @String.format("%.2f", {review.getSad() * 100.00 / review.getTotal()})%<br/>
+    <a href="/">
+        <button 
+        type="button"
+        style="
+            font-size: large;
+            border-radius: 7.5px;
+            margin: 0.4em;
+            margin-left: 0;
+            "
+    >
+        Back to main menu
+        </button>
+    </a>
+    <h3>Reviews</h3>
+    <div>
+        <ul id="reviewList">
+            @for((rev, index) <- review.getReviews().zipWithIndex) {
+                <li style="margin-bottom: 1em;">
+                    <div>
+                        <p>
+                            Review sentiment: @review.getSentimentAtIndex(index)
+                        </p>
+                        <p>
+                            @rev
+                        </p>
+                    </div>
+                </li>
+            }
+        </ul>
+    </div>
+  </div>
+}

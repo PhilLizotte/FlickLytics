@@ -35,7 +35,7 @@ function performSearch() {
                 const item = items[i] || {};
 
                 // DEBUG:: display the items in the console.
-                console.log(item);
+                // console.log(item);
 
                 if (category === "person") {
                     const name = item.name || "(no name)";
@@ -124,6 +124,7 @@ function performSearch() {
                     titleLink.target = "_blank";
                     titleLink.rel = "noopener noreferrer";
                     titleLink.innerText = title;
+                    li.style = "margin-bottom: 1em";
                     li.appendChild(titleLink);
 
                     const language =
@@ -151,17 +152,10 @@ function performSearch() {
                         ) ?
                             item.vote_average
                         :   "";
-                    const reviewsSentiment =
-                        (
-                            item.reviewsSentiment !== undefined &&
-                            item.reviewsSentiment !== null
-                        ) ?
-                            item.reviewsSentiment
-                        :   "";
 
                     const meta = document.createElement("span");
 
-                    // Give this HTML element a unique ID so I can reference it in the movie detail call
+                    // Give this HTML element *a unique ID so I can reference it in the movie detail call
                     meta.innerText =
                         ", Language: " +
                         language +
@@ -172,43 +166,41 @@ function performSearch() {
                         ", Popularity: " +
                         popularity +
                         ", Vote Average: " +
-                        voteAverage +
-                        ", Reviews sentiment: " +
-                        reviewsSentiment;
+                        voteAverage;
                     li.appendChild(meta);
+
+                    // no need to check here if the category is movie/tv as that check is already done a while ago
+                    li.appendChild(document.createElement("br"));
+                    const review = document.createElement("a");
+                    // movie titles are item.title, but tv show titles are item.name
+                    review.href =
+                        "/reviews/" +
+                        category +
+                        "/" +
+                        item.id +
+                        "/" +
+                        (category === "movie" ? item.title : item.name);
+                    review.innerText = "View review sentiments";
+                    li.appendChild(review);
 
                     const fpLinkSpan = document.createElement("span");
                     fpLinkSpan.className = "financial_" + category + item.id;
 
-                    const entryList = document.createElement("ul");
-                    entryList.appendChild(
-                        document.createElement("li").appendChild(fpLinkSpan),
-                    );
+                    li.appendChild(document.createElement("br"));
+                    li.appendChild(fpLinkSpan);
 
-                    li.appendChild(entryList);
+                    // li.appendChild(entryList);
                     li.appendChild(document.createElement("br"));
 
                     if (category === "movie") {
-                        // Financial Performance Feature
-                        // First, build URL
-                        const movieIdUrl = "/api/movie?id=" + item.id;
-
-                        fetch(movieIdUrl)
-                            .then((res) => res.json())
-                            .then((json) => {
-                                const linkSpans =
-                                    document.getElementsByClassName(
-                                        "financial_movie" + json.id,
-                                    );
-                                for (const linkSpan of linkSpans) {
-                                    const link = document.createElement("a");
-                                    link.href = "/finances/" + json.id;
-                                    link.innerText =
-                                        "View financial performance";
-                                    linkSpan.appendChild(link);
-                                }
-                            })
-                            .catch((err) => console.error(err));
+                        // Generate link to financial information page
+                        const fpLinkSpan = document.createElement("span");
+                        const financeLink = document.createElement("a");
+                        financeLink.href = "/finances/" + item.id;
+                        financeLink.innerText = "View financial performance";
+                        fpLinkSpan.appendChild(financeLink);
+                        li.appendChild(document.createElement("br"));
+                        li.appendChild(fpLinkSpan);
                     }
 
                     const singlePageUrl = document.createElement("a");
@@ -217,6 +209,7 @@ function performSearch() {
                         "tv" === category ?
                             "/tv/" + item.id
                         :   "/movie/" + item.id;
+                    li.appendChild(document.createElement("br"));
                     li.appendChild(singlePageUrl);
                 }
                 list.appendChild(li);
