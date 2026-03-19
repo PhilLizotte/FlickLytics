@@ -191,4 +191,57 @@ public class TmdbSearchServiceTest {
 
         verify(ws, times(1)).url(baseUrl + "/genre/movie/list");
     }
+
+    @Test
+    public void testSearchTVShowsEnrichesGenresAndCachesGenreList() {
+        String baseUrl = "https://api.example";
+
+        WSClient ws = mock(WSClient.class);
+        TmdbConfig config = mock(TmdbConfig.class);
+        when(config.getBaseUrl()).thenReturn(baseUrl);
+        when(config.getApiKey()).thenReturn("api_key");
+
+        WSRequest genreReq = mock(WSRequest.class);
+        when(genreReq.addQueryParameter(anyString(), anyString())).thenReturn(genreReq);
+        WSResponse genreResp = mock(WSResponse.class);
+        when(genreResp.asJson()).thenReturn(Json.parse("{\"genres\":[{\"id\":16,\"name\":\"Animation\"}]}"));
+        when(genreReq.get()).thenReturn(CompletableFuture.completedFuture(genreResp));
+
+        WSRequest searchReq = mock(WSRequest.class);
+        when(searchReq.addQueryParameter(anyString(), anyString())).thenReturn(searchReq);
+        WSResponse searchResp = mock(WSResponse.class);
+        when(searchResp.asJson()).thenReturn(Json.parse(
+                "{\"results\":[{\"id\":5,\"genre_ids\":[16],\"first_air_date\":\"2020-01-02\",\"original_language\":\"en\"}]}"));
+        when(searchReq.get()).thenReturn(CompletableFuture.completedFuture(searchResp));
+
+        // ReviewSentimentService uses the same WSClient, so we must provide requests
+        // for the reviews URL.
+        WSRequest reviewsReq = mock(WSRequest.class);
+        when(reviewsReq.addQueryParameter(anyString(), anyString())).thenReturn(reviewsReq);
+        WSResponse reviewsResp = mock(WSResponse.class);
+        when(reviewsResp.asJson()).thenReturn(Json.parse("{\"results\":[]}"));
+        when(reviewsReq.get()).thenReturn(CompletableFuture.completedFuture(reviewsResp));
+
+        when(ws.url(baseUrl + "/genre/tv/list")).thenReturn(genreReq);
+        when(ws.url(baseUrl + "/search/tv")).thenReturn(searchReq);
+        when(ws.url(baseUrl + "/tv/5/reviews")).thenReturn(reviewsReq);
+
+        TmdbSearchService service = new TmdbSearchService(ws, config);
+
+        JsonNode enriched1 = service.search("tv", "batman").toCompletableFuture().join();
+        JsonNode item1 = enriched1.get("results").get(0);
+
+        assertEquals("https://www.themoviedb.org/tv/5", item1.get("detailsUrl").asText());
+        assertEquals("2020-01-02", item1.get("first_air_date").asText());
+        assertEquals("en", item1.get("original_language").asText());
+        assertTrue(item1.get("genres").isArray());
+        assertEquals("Animation", item1.get("genres").get(0).asText());
+
+        // second call should reuse cached genre map
+        JsonNode enriched2 = service.search("tv", "batman").toCompletableFuture().join();
+        assertNotNull(enriched2);
+
+        verify(ws, times(1)).url(baseUrl + "/genre/tv/list");
+    }
+
 }

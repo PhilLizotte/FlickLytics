@@ -136,6 +136,26 @@ public class TmdbSearchControllerTest extends WithApplication {
         }
 
         @Test
+        public void testSearchNullCategory() {
+                Http.RequestBuilder request = new Http.RequestBuilder()
+                                .method(GET)
+                                .uri("/api/search?category=&query=test");
+
+                Result result = route(app, request);
+                assertEquals(BAD_REQUEST, result.status());
+        }
+
+        @Test
+        public void testSearchNullQuery() {
+                Http.RequestBuilder request = new Http.RequestBuilder()
+                                .method(GET)
+                                .uri("/api/search?category=movie&query=");
+
+                Result result = route(app, request);
+                assertEquals(BAD_REQUEST, result.status());
+        }
+
+        @Test
         public void testSearchMissingCategoryReturnsBadRequest() {
                 Http.RequestBuilder request = new Http.RequestBuilder()
                                 .method(GET)
@@ -164,6 +184,46 @@ public class TmdbSearchControllerTest extends WithApplication {
                 Result result = route(app, request);
                 assertEquals(OK, result.status());
         }
+
+        @Test
+        public void testReview() {
+                Http.RequestBuilder request = new Http.RequestBuilder()
+                                .method(GET)
+                                .uri("/reviews/movie/1/fake");
+
+                Result result = route(app, request);
+                assertEquals(OK, result.status());
+        }
+
+        @Test
+        public void testGlobalDiversity() {
+                Http.RequestBuilder request = new Http.RequestBuilder()
+                                .method(GET)
+                                .uri("/diversity/movie/1");
+
+                Result result = route(app, request);
+                assertEquals(OK, result.status());
+        }
+
+        // @Test
+        // public void testGlobalDiversityMissingCategory() {
+        // Http.RequestBuilder request = new Http.RequestBuilder()
+        // .method(GET)
+        // .uri("/diversity//1");
+
+        // Result result = route(app, request);
+        // assertEquals(BAD_REQUEST, result.status());
+        // }
+
+        // @Test
+        // public void testGlobalDiversityMissingId() {
+        // Http.RequestBuilder request = new Http.RequestBuilder()
+        // .method(GET)
+        // .uri("/diversity/movie/");
+
+        // Result result = route(app, request);
+        // assertEquals(BAD_REQUEST, result.status());
+        // }
 
         // @Test
         // public void testKnownForEndpointWhenServiceFailsReturnsInternalServerError()
