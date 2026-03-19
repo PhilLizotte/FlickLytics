@@ -9,6 +9,7 @@ import play.libs.ws.WSResponse;
 import services.features.diversity.GlobalDiversityService;
 import services.tmdb.TmdbConfig;
 import models.dto.GlobalDiversityStats;
+import com.fasterxml.jackson.databind.node.TextNode;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -139,5 +140,41 @@ public class GlobalDiversityServiceTest {
         assertEquals(0.0, stats.localizationIndex, 1e-9);
 
         verify(languagesReq, times(1)).get();
+    }
+
+    @Test
+    public void testEncode_withReflection() throws Exception {
+        var method = GlobalDiversityService.class
+                .getDeclaredMethod("encode", String.class);
+
+        method.setAccessible(true);
+
+        String result1 = (String) method.invoke(null, new Object[]{null});
+        assertEquals("", result1);
+
+        String result2 = (String) method.invoke(null, "hello world");
+        assertEquals("hello+world", result2);
+    }
+
+
+    @Test
+    public void testSafeText_withReflection() throws Exception {
+        var method = GlobalDiversityService.class
+                .getDeclaredMethod("safeText", JsonNode.class);
+
+        method.setAccessible(true);
+
+        ObjectMapper mapper = new ObjectMapper();
+
+        String result1 = (String) method.invoke(null, new Object[]{null});
+        assertEquals("", result1);
+
+        JsonNode nullNode = mapper.nullNode();
+        String result2 = (String) method.invoke(null, nullNode);
+        assertEquals("", result2);
+
+        JsonNode textNode = TextNode.valueOf("hello");
+        String result3 = (String) method.invoke(null, textNode);
+        assertEquals("hello", result3);
     }
 }
