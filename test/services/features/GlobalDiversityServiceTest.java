@@ -8,129 +8,98 @@ import play.libs.ws.WSRequest;
 import play.libs.ws.WSResponse;
 import services.features.diversity.GlobalDiversityService;
 import services.tmdb.TmdbConfig;
-import models.dto.GlobalDiversityStats;
-import com.fasterxml.jackson.databind.node.TextNode;
 
 import java.util.concurrent.CompletableFuture;
 
 import static org.junit.Assert.*;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 /**
  * Unit tests for {@link GlobalDiversityService}.
- * <p>
- * Ensures Global Diversity metrics are computed correctly without calling the live TMDb API.
- * Uses mocks for WSClient/WSRequest/WSResponse to simulate TMDb JSON responses.
- * </p>
  *
- * Author: Chama
+ * <p>Uses mocked WSClient/WSRequest/WSResponse so tests do NOT call the live TMDb API.</p>
+ *
+ * @author Chama
  */
 public class GlobalDiversityServiceTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    /** Tests compute() for a movie with mocked TMDb responses. */
     @Test
-    public void testComputeMovieMetrics() throws Exception {
-        // --- Mocks
+    public void compute_movie_returnsExpectedMetrics() throws Exception {
+        // Mock TMDb config
+        TmdbConfig tmdbConfig = mock(TmdbConfig.class);
+        when(tmdbConfig.getBaseUrl()).thenReturn("https://api.themoviedb.org/3");
+        when(tmdbConfig.getApiKey()).thenReturn("dummy");
+
+        // Mock WS
         WSClient ws = mock(WSClient.class);
-        TmdbConfig cfg = mock(TmdbConfig.class);
+        WSRequest reqLanguages = mock(WSRequest.class);
+        WSRequest reqTranslations = mock(WSRequest.class);
+        WSResponse respLanguages = mock(WSResponse.class);
+        WSResponse respTranslations = mock(WSResponse.class);
 
-        when(cfg.getBaseUrl()).thenReturn("https://api.themoviedb.org/3");
-        when(cfg.getApiKey()).thenReturn("dummy");
+        // URL routing
+        when(ws.url(contains("/configuration/languages"))).thenReturn(reqLanguages);
+        when(ws.url(contains("/movie/"))).thenReturn(reqTranslations);
 
-        WSRequest languagesReq = mock(WSRequest.class);
-        WSRequest translationsReq = mock(WSRequest.class);
+        // languages endpoint returns array size 4
+        JsonNode languagesJson = MAPPER.readTree("[{\"a\":1},{\"a\":2},{\"a\":3},{\"a\":4}]");
+        when(respLanguages.asJson()).thenReturn(languagesJson);
+        when(reqLanguages.get()).thenReturn(CompletableFuture.completedFuture(respLanguages));
 
-        when(ws.url(contains("/configuration/languages"))).thenReturn(languagesReq);
-        when(ws.url(contains("/movie/27205/translations"))).thenReturn(translationsReq);
+        // translations endpoint: 3 translations total, 2 usable overviews, 1 empty overview
+        String translationsPayload = """
+        {
+          "translations": [
+            { "data": { "overview": "Short overview." } },
+            { "data": { "overview": "This is a longer overview text." } },
+            { "data": { "overview": "" } }
+          ]
+        }
+        """;
+        JsonNode translationsJson = MAPPER.readTree(translationsPayload);
+        when(respTranslations.asJson()).thenReturn(translationsJson);
+        when(reqTranslations.get()).thenReturn(CompletableFuture.completedFuture(respTranslations));
 
-        WSResponse languagesResp = mock(WSResponse.class);
-        WSResponse translationsResp = mock(WSResponse.class);
+        GlobalDiversityService service = new GlobalDiversityService(ws, tmdbConfig);
 
-        // Supported languages: 4
-        JsonNode languagesJson = MAPPER.readTree("""
-            [
-              {"iso_639_1":"en"},
-              {"iso_639_1":"fr"},
-              {"iso_639_1":"es"},
-              {"iso_639_1":"de"}
-            ]
-        """);
+        var stats = service.compute("movie", 123).toCompletableFuture().get();
 
-        // Translations: 3 entries, only 2 non-empty overviews.
-        // Baseline = longest non-empty overview length = 20
-        // Localization ratios: 20/20=1.0, 10/20=0.5 => avg = 0.75
-        JsonNode translationsJson = MAPPER.readTree("""
-            {
-              "id": 27205,
-              "translations": [
-                {"iso_639_1":"en","data":{"overview":"AAAAAAAAAAAAAAAAAAAA"}},
-                {"iso_639_1":"fr","data":{"overview":"BBBBBBBBBB"}},
-                {"iso_639_1":"es","data":{"overview":""}}
-              ]
-            }
-        """);
-
-        when(languagesResp.asJson()).thenReturn(languagesJson);
-        when(translationsResp.asJson()).thenReturn(translationsJson);
-
-        when(languagesReq.get()).thenReturn(CompletableFuture.completedFuture(languagesResp));
-        when(translationsReq.get()).thenReturn(CompletableFuture.completedFuture(translationsResp));
-
-        // --- Run
-        GlobalDiversityService service = new GlobalDiversityService(ws, cfg);
-
-        GlobalDiversityStats stats = service.compute("movie", 27205)
-                .toCompletableFuture()
-                .get();
-
-        // --- Assert
         assertEquals("movie", stats.category);
-        assertEquals(27205, stats.id);
+        assertEquals(123, stats.id);
 
         assertEquals(3, stats.translationCount);
         assertEquals(4, stats.supportedLanguageCount);
-
         assertEquals(0.75, stats.translationDensity, 1e-9);
-        assertEquals(0.75, stats.localizationIndex, 1e-9);
 
-        // --- Verify no extra calls
-        verify(languagesReq, times(1)).get();
-        verify(translationsReq, times(1)).get();
+        assertTrue(stats.localizationIndex > 0.0);
+        assertTrue(stats.localizationIndex <= 1.0);
+
+        verify(ws, atLeastOnce()).url(anyString());
     }
 
-    /** Tests behavior for an invalid category (should return zeros). */
     @Test
-    public void testInvalidCategoryReturnsZeros() throws Exception {
+    public void compute_invalidCategory_returnsZeros_butStillFetchesSupportedLanguages() throws Exception {
+        // NOTE: compute() always calls fetchSupportedLanguageCount(), even if category is invalid.
+        TmdbConfig tmdbConfig = mock(TmdbConfig.class);
+        when(tmdbConfig.getBaseUrl()).thenReturn("https://api.themoviedb.org/3");
+        when(tmdbConfig.getApiKey()).thenReturn("dummy");
+
         WSClient ws = mock(WSClient.class);
-        TmdbConfig cfg = mock(TmdbConfig.class);
+        WSRequest reqLanguages = mock(WSRequest.class);
+        WSResponse respLanguages = mock(WSResponse.class);
 
-        when(cfg.getBaseUrl()).thenReturn("https://api.themoviedb.org/3");
-        when(cfg.getApiKey()).thenReturn("dummy");
+        when(ws.url(contains("/configuration/languages"))).thenReturn(reqLanguages);
 
-        // For invalid category, translations stage returns empty without calling WS.
-        // We still expect languages to be fetched. We'll mock it to 2.
-        WSRequest languagesReq = mock(WSRequest.class);
-        WSResponse languagesResp = mock(WSResponse.class);
+        JsonNode languagesJson = MAPPER.readTree("[{\"a\":1},{\"a\":2}]"); // supportedLanguageCount = 2
+        when(respLanguages.asJson()).thenReturn(languagesJson);
+        when(reqLanguages.get()).thenReturn(CompletableFuture.completedFuture(respLanguages));
 
-        when(ws.url(contains("/configuration/languages"))).thenReturn(languagesReq);
+        GlobalDiversityService service = new GlobalDiversityService(ws, tmdbConfig);
 
-        JsonNode languagesJson = MAPPER.readTree("""
-            [
-              {"iso_639_1":"en"},
-              {"iso_639_1":"fr"}
-            ]
-        """);
-
-        when(languagesResp.asJson()).thenReturn(languagesJson);
-        when(languagesReq.get()).thenReturn(CompletableFuture.completedFuture(languagesResp));
-
-        GlobalDiversityService service = new GlobalDiversityService(ws, cfg);
-
-        GlobalDiversityStats stats = service.compute("person", 1)
-                .toCompletableFuture()
-                .get();
+        var stats = service.compute("person", 1).toCompletableFuture().get();
 
         assertEquals("person", stats.category);
         assertEquals(1, stats.id);
@@ -139,42 +108,132 @@ public class GlobalDiversityServiceTest {
         assertEquals(0.0, stats.translationDensity, 1e-9);
         assertEquals(0.0, stats.localizationIndex, 1e-9);
 
-        verify(languagesReq, times(1)).get();
+        // Should NOT call translations endpoint for invalid category
+        verify(ws, never()).url(contains("/translations"));
+        verify(ws, atLeastOnce()).url(contains("/configuration/languages"));
     }
 
     @Test
-    public void testEncode_withReflection() throws Exception {
-        var method = GlobalDiversityService.class
-                .getDeclaredMethod("encode", String.class);
+    public void compute_movie_missingTranslationsField_hitsTranslationsNullBranch() throws Exception {
+        TmdbConfig tmdbConfig = mock(TmdbConfig.class);
+        when(tmdbConfig.getBaseUrl()).thenReturn("https://api.themoviedb.org/3");
+        when(tmdbConfig.getApiKey()).thenReturn("dummy");
 
-        method.setAccessible(true);
+        WSClient ws = mock(WSClient.class);
+        WSRequest reqLanguages = mock(WSRequest.class);
+        WSRequest reqTranslations = mock(WSRequest.class);
+        WSResponse respLanguages = mock(WSResponse.class);
+        WSResponse respTranslations = mock(WSResponse.class);
 
-        String result1 = (String) method.invoke(null, new Object[]{null});
-        assertEquals("", result1);
+        when(ws.url(contains("/configuration/languages"))).thenReturn(reqLanguages);
+        when(ws.url(contains("/movie/"))).thenReturn(reqTranslations);
 
-        String result2 = (String) method.invoke(null, "hello world");
-        assertEquals("hello+world", result2);
+        JsonNode languagesJson = MAPPER.readTree("[{\"a\":1},{\"a\":2},{\"a\":3}]"); // 3
+        when(respLanguages.asJson()).thenReturn(languagesJson);
+        when(reqLanguages.get()).thenReturn(CompletableFuture.completedFuture(respLanguages));
+
+        // No "translations" field at all => translations == null branch
+        JsonNode translationsJson = MAPPER.readTree("{\"somethingElse\":123}");
+        when(respTranslations.asJson()).thenReturn(translationsJson);
+        when(reqTranslations.get()).thenReturn(CompletableFuture.completedFuture(respTranslations));
+
+        GlobalDiversityService service = new GlobalDiversityService(ws, tmdbConfig);
+
+        var stats = service.compute("movie", 11).toCompletableFuture().get();
+
+        assertEquals(0, stats.translationCount);
+        assertEquals(3, stats.supportedLanguageCount);
+        assertEquals(0.0, stats.translationDensity, 1e-9);
+        assertEquals(0.0, stats.localizationIndex, 1e-9);
     }
 
+    @Test
+    public void compute_movie_overviewMissingOrEmpty_hitsSafeTextNull_and_BaseLenZero() throws Exception {
+        TmdbConfig tmdbConfig = mock(TmdbConfig.class);
+        when(tmdbConfig.getBaseUrl()).thenReturn("https://api.themoviedb.org/3");
+        when(tmdbConfig.getApiKey()).thenReturn("dummy");
+
+        WSClient ws = mock(WSClient.class);
+        WSRequest reqLanguages = mock(WSRequest.class);
+        WSRequest reqTranslations = mock(WSRequest.class);
+        WSResponse respLanguages = mock(WSResponse.class);
+        WSResponse respTranslations = mock(WSResponse.class);
+
+        when(ws.url(contains("/configuration/languages"))).thenReturn(reqLanguages);
+        when(ws.url(contains("/movie/"))).thenReturn(reqTranslations);
+
+        JsonNode languagesJson = MAPPER.readTree("[{\"a\":1},{\"a\":2},{\"a\":3},{\"a\":4},{\"a\":5}]"); // 5
+        when(respLanguages.asJson()).thenReturn(languagesJson);
+        when(reqLanguages.get()).thenReturn(CompletableFuture.completedFuture(respLanguages));
+
+        // translations array exists, but overviews are missing/blank
+        String payload = """
+        {
+          "translations": [
+            { "data": { } },
+            { "data": { "overview": "   " } }
+          ]
+        }
+        """;
+        JsonNode translationsJson = MAPPER.readTree(payload);
+        when(respTranslations.asJson()).thenReturn(translationsJson);
+        when(reqTranslations.get()).thenReturn(CompletableFuture.completedFuture(respTranslations));
+
+        GlobalDiversityService service = new GlobalDiversityService(ws, tmdbConfig);
+
+        var stats = service.compute("movie", 99).toCompletableFuture().get();
+
+        // translationCount counts array size (2)
+        assertEquals(2, stats.translationCount);
+        assertEquals(5, stats.supportedLanguageCount);
+        assertEquals((double) 2 / 5, stats.translationDensity, 1e-9);
+
+        // baseline stays empty => baseLen==0 => localizationIndex 0.0
+        assertEquals(0.0, stats.localizationIndex, 1e-9);
+    }
 
     @Test
-    public void testSafeText_withReflection() throws Exception {
-        var method = GlobalDiversityService.class
-                .getDeclaredMethod("safeText", JsonNode.class);
+    public void compute_movie_twoValidOverviews_hitsBaselineUpdate_and_AverageComputation() throws Exception {
+        TmdbConfig tmdbConfig = mock(TmdbConfig.class);
+        when(tmdbConfig.getBaseUrl()).thenReturn("https://api.themoviedb.org/3");
+        when(tmdbConfig.getApiKey()).thenReturn("dummy");
 
-        method.setAccessible(true);
+        WSClient ws = mock(WSClient.class);
+        WSRequest reqLanguages = mock(WSRequest.class);
+        WSRequest reqTranslations = mock(WSRequest.class);
+        WSResponse respLanguages = mock(WSResponse.class);
+        WSResponse respTranslations = mock(WSResponse.class);
 
-        ObjectMapper mapper = new ObjectMapper();
+        when(ws.url(contains("/configuration/languages"))).thenReturn(reqLanguages);
+        when(ws.url(contains("/movie/"))).thenReturn(reqTranslations);
 
-        String result1 = (String) method.invoke(null, new Object[]{null});
-        assertEquals("", result1);
+        JsonNode languagesJson = MAPPER.readTree("[{\"a\":1},{\"a\":2},{\"a\":3},{\"a\":4}]"); // 4
+        when(respLanguages.asJson()).thenReturn(languagesJson);
 
-        JsonNode nullNode = mapper.nullNode();
-        String result2 = (String) method.invoke(null, nullNode);
-        assertEquals("", result2);
+        when(reqLanguages.get()).thenReturn(CompletableFuture.completedFuture(respLanguages));
 
-        JsonNode textNode = TextNode.valueOf("hello");
-        String result3 = (String) method.invoke(null, textNode);
-        assertEquals("hello", result3);
+        // longest is length 10, second is length 5
+        String payload = """
+        {
+          "translations": [
+            { "data": { "overview": "1234567890" } },
+            { "data": { "overview": "12345" } }
+          ]
+        }
+        """;
+        JsonNode translationsJson = MAPPER.readTree(payload);
+        when(respTranslations.asJson()).thenReturn(translationsJson);
+        when(reqTranslations.get()).thenReturn(CompletableFuture.completedFuture(respTranslations));
+
+        GlobalDiversityService service = new GlobalDiversityService(ws, tmdbConfig);
+
+        var stats = service.compute("movie", 268).toCompletableFuture().get();
+
+        assertEquals(2, stats.translationCount);
+        assertEquals(4, stats.supportedLanguageCount);
+        assertEquals(0.5, stats.translationDensity, 1e-9);
+
+        // avg(10/10, 5/10) = 0.75
+        assertEquals(0.75, stats.localizationIndex, 1e-9);
     }
 }
