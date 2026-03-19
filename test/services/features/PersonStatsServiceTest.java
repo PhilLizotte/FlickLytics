@@ -11,11 +11,15 @@ import play.libs.ws.WSResponse;
 import services.features.personstats.PersonStatsService;
 import services.tmdb.TmdbConfig;
 
+import java.lang.reflect.Method;
+import java.util.Optional;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.lang.reflect.Field;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Unit tests for {@link services.features.personstats.PersonStatsService}.
@@ -121,6 +125,317 @@ public class PersonStatsServiceTest {
         assertEquals(1, first.size());
         assertEquals(1, second.size());
         Mockito.verify(request, Mockito.times(1)).get();
+    }
+
+    @Test
+    public void testGetKnownForPageHandlesInvalidReleaseDateString() {
+        Integer personId = 500;
+
+        WSClient ws = Mockito.mock(WSClient.class);
+        WSRequest request = Mockito.mock(WSRequest.class);
+        WSResponse response = Mockito.mock(WSResponse.class);
+
+        TmdbConfig tmdbConfig = Mockito.mock(TmdbConfig.class);
+        Mockito.when(tmdbConfig.getBaseUrl()).thenReturn("https://api.themoviedb.org/3");
+        Mockito.when(tmdbConfig.getApiKey()).thenReturn("test-api-key");
+
+        String expectedUrl = "https://api.themoviedb.org/3/person/" + personId + "/combined_credits";
+        Mockito.when(ws.url(expectedUrl)).thenReturn(request);
+        Mockito.when(request.addQueryParameter(Mockito.anyString(), Mockito.anyString())).thenReturn(request);
+
+        Mockito.when(response.asJson()).thenReturn(Json.parse("""
+            {
+              \"cast\": [
+                {\"id\": 1, \"media_type\": \"movie\", \"title\": \"A\", \"release_date\": \"not-a-date\", \"popularity\": 10.0, \"vote_average\": 7.0, \"vote_count\": 100},
+                {\"id\": 2, \"media_type\": \"movie\", \"title\": \"B\", \"release_date\": \"2022-01-01\", \"popularity\": 20.0, \"vote_average\": 8.0, \"vote_count\": 200}
+              ],
+              \"crew\": []
+            }
+        """));
+        Mockito.when(request.get()).thenReturn(CompletableFuture.completedFuture(response));
+
+        PersonStatsService service = new PersonStatsService(ws, tmdbConfig);
+        PersonKnownForPageDTO page = service.getKnownForPage(personId).toCompletableFuture().join();
+
+        List<PersonKnownForItemDTO> items = page.getItems();
+        assertEquals(2, items.size());
+        assertEquals(Integer.valueOf(2), items.get(0).getId());
+        assertEquals(Integer.valueOf(1), items.get(1).getId());
+    }
+
+    @Test
+    public void testGetKnownForItemsReturnsEmptyListWhenResponseIsNotObject() {
+        Integer personId = 500;
+
+        WSClient ws = Mockito.mock(WSClient.class);
+        WSRequest request = Mockito.mock(WSRequest.class);
+        WSResponse response = Mockito.mock(WSResponse.class);
+
+        TmdbConfig tmdbConfig = Mockito.mock(TmdbConfig.class);
+        Mockito.when(tmdbConfig.getBaseUrl()).thenReturn("https://api.themoviedb.org/3");
+        Mockito.when(tmdbConfig.getApiKey()).thenReturn("test-api-key");
+
+        String expectedUrl = "https://api.themoviedb.org/3/person/" + personId + "/combined_credits";
+        Mockito.when(ws.url(expectedUrl)).thenReturn(request);
+        Mockito.when(request.addQueryParameter(Mockito.anyString(), Mockito.anyString())).thenReturn(request);
+
+        Mockito.when(response.asJson()).thenReturn(Json.parse("[]"));
+        Mockito.when(request.get()).thenReturn(CompletableFuture.completedFuture(response));
+
+        PersonStatsService service = new PersonStatsService(ws, tmdbConfig);
+        List<PersonKnownForItemDTO> items = service.getKnownForItems(personId).toCompletableFuture().join();
+
+        assertEquals(0, items.size());
+    }
+
+    @Test
+    public void testGetKnownForItemsBuildsEmptyTmdbUrlWhenIdMissing() {
+        Integer personId = 500;
+
+        WSClient ws = Mockito.mock(WSClient.class);
+        WSRequest request = Mockito.mock(WSRequest.class);
+        WSResponse response = Mockito.mock(WSResponse.class);
+
+        TmdbConfig tmdbConfig = Mockito.mock(TmdbConfig.class);
+        Mockito.when(tmdbConfig.getBaseUrl()).thenReturn("https://api.themoviedb.org/3");
+        Mockito.when(tmdbConfig.getApiKey()).thenReturn("test-api-key");
+
+        String expectedUrl = "https://api.themoviedb.org/3/person/" + personId + "/combined_credits";
+        Mockito.when(ws.url(expectedUrl)).thenReturn(request);
+        Mockito.when(request.addQueryParameter(Mockito.anyString(), Mockito.anyString())).thenReturn(request);
+
+        Mockito.when(response.asJson()).thenReturn(Json.parse("""
+            {
+              \"cast\": [
+                {\"media_type\": \"movie\", \"title\": \"Missing Id\", \"release_date\": \"2020-01-01\"}
+              ],
+              \"crew\": []
+            }
+        """));
+        Mockito.when(request.get()).thenReturn(CompletableFuture.completedFuture(response));
+
+        PersonStatsService service = new PersonStatsService(ws, tmdbConfig);
+        List<PersonKnownForItemDTO> items = service.getKnownForItems(personId).toCompletableFuture().join();
+
+        assertEquals(1, items.size());
+        assertNull(items.get(0).getId());
+        assertEquals("", items.get(0).getTmdbUrl());
+    }
+
+    @Test
+    public void testGetKnownForItemsRefetchesWhenCacheExpired() throws Exception {
+        Integer personId = 500;
+
+        WSClient ws = Mockito.mock(WSClient.class);
+        WSRequest request = Mockito.mock(WSRequest.class);
+        WSResponse response = Mockito.mock(WSResponse.class);
+
+        TmdbConfig tmdbConfig = Mockito.mock(TmdbConfig.class);
+        Mockito.when(tmdbConfig.getBaseUrl()).thenReturn("https://api.themoviedb.org/3");
+        Mockito.when(tmdbConfig.getApiKey()).thenReturn("test-api-key");
+
+        String expectedUrl = "https://api.themoviedb.org/3/person/" + personId + "/combined_credits";
+        Mockito.when(ws.url(expectedUrl)).thenReturn(request);
+        Mockito.when(request.addQueryParameter(Mockito.anyString(), Mockito.anyString())).thenReturn(request);
+
+        Mockito.when(response.asJson()).thenReturn(Json.parse("""
+            {
+              \"cast\": [ {\"id\": 1, \"media_type\": \"movie\", \"title\": \"A\", \"release_date\": \"2020-01-01\"} ],
+              \"crew\": []
+            }
+        """));
+        Mockito.when(request.get()).thenReturn(CompletableFuture.completedFuture(response));
+
+        PersonStatsService service = new PersonStatsService(ws, tmdbConfig);
+
+        List<PersonKnownForItemDTO> first = service.getKnownForItems(personId).toCompletableFuture().join();
+        assertEquals(1, first.size());
+
+        Field cacheField = PersonStatsService.class.getDeclaredField("combinedCreditsCache");
+        cacheField.setAccessible(true);
+
+        @SuppressWarnings("unchecked")
+        java.util.concurrent.ConcurrentMap<Integer, Object> map = (java.util.concurrent.ConcurrentMap<Integer, Object>) cacheField.get(service);
+
+        Object entry = map.get(personId);
+        Field fetchedAtField = entry.getClass().getDeclaredField("fetchedAtMillis");
+        fetchedAtField.setAccessible(true);
+        fetchedAtField.setLong(entry, 0L);
+
+        List<PersonKnownForItemDTO> second = service.getKnownForItems(personId).toCompletableFuture().join();
+        assertEquals(1, second.size());
+
+        Mockito.verify(request, Mockito.times(2)).get();
+    }
+
+    @Test
+    public void testGetKnownForItemsReturnsEmptyWhenCastAndCrewMissing() {
+        Integer personId = 500;
+
+        WSClient ws = Mockito.mock(WSClient.class);
+        WSRequest request = Mockito.mock(WSRequest.class);
+        WSResponse response = Mockito.mock(WSResponse.class);
+
+        TmdbConfig tmdbConfig = Mockito.mock(TmdbConfig.class);
+        Mockito.when(tmdbConfig.getBaseUrl()).thenReturn("https://api.themoviedb.org/3");
+        Mockito.when(tmdbConfig.getApiKey()).thenReturn("test-api-key");
+
+        String expectedUrl = "https://api.themoviedb.org/3/person/" + personId + "/combined_credits";
+        Mockito.when(ws.url(expectedUrl)).thenReturn(request);
+        Mockito.when(request.addQueryParameter(Mockito.anyString(), Mockito.anyString())).thenReturn(request);
+
+        Mockito.when(response.asJson()).thenReturn(Json.parse("{}"));
+        Mockito.when(request.get()).thenReturn(CompletableFuture.completedFuture(response));
+
+        PersonStatsService service = new PersonStatsService(ws, tmdbConfig);
+        List<PersonKnownForItemDTO> items = service.getKnownForItems(personId).toCompletableFuture().join();
+
+        assertEquals(0, items.size());
+    }
+
+    @Test
+    public void testGetKnownForItemsIgnoresNonArrayCastAndCrew() {
+        Integer personId = 500;
+
+        WSClient ws = Mockito.mock(WSClient.class);
+        WSRequest request = Mockito.mock(WSRequest.class);
+        WSResponse response = Mockito.mock(WSResponse.class);
+
+        TmdbConfig tmdbConfig = Mockito.mock(TmdbConfig.class);
+        Mockito.when(tmdbConfig.getBaseUrl()).thenReturn("https://api.themoviedb.org/3");
+        Mockito.when(tmdbConfig.getApiKey()).thenReturn("test-api-key");
+
+        String expectedUrl = "https://api.themoviedb.org/3/person/" + personId + "/combined_credits";
+        Mockito.when(ws.url(expectedUrl)).thenReturn(request);
+        Mockito.when(request.addQueryParameter(Mockito.anyString(), Mockito.anyString())).thenReturn(request);
+
+        Mockito.when(response.asJson()).thenReturn(Json.parse("""
+            { \"cast\": \"not-an-array\", \"crew\": 123 }
+        """));
+        Mockito.when(request.get()).thenReturn(CompletableFuture.completedFuture(response));
+
+        PersonStatsService service = new PersonStatsService(ws, tmdbConfig);
+        List<PersonKnownForItemDTO> items = service.getKnownForItems(personId).toCompletableFuture().join();
+
+        assertEquals(0, items.size());
+    }
+
+    @Test
+    public void testToKnownForItemUsesNameAndFirstAirDateWhenMovieFieldsMissing() {
+        Integer personId = 500;
+
+        WSClient ws = Mockito.mock(WSClient.class);
+        WSRequest request = Mockito.mock(WSRequest.class);
+        WSResponse response = Mockito.mock(WSResponse.class);
+
+        TmdbConfig tmdbConfig = Mockito.mock(TmdbConfig.class);
+        Mockito.when(tmdbConfig.getBaseUrl()).thenReturn("https://api.themoviedb.org/3");
+        Mockito.when(tmdbConfig.getApiKey()).thenReturn("test-api-key");
+
+        String expectedUrl = "https://api.themoviedb.org/3/person/" + personId + "/combined_credits";
+        Mockito.when(ws.url(expectedUrl)).thenReturn(request);
+        Mockito.when(request.addQueryParameter(Mockito.anyString(), Mockito.anyString())).thenReturn(request);
+
+        Mockito.when(response.asJson()).thenReturn(Json.parse("""
+            {
+              \"cast\": [
+                {\"id\": 2, \"media_type\": \"tv\", \"name\": \"TV Name\", \"first_air_date\": \"2021-05-10\"},
+                {\"id\": 3, \"media_type\": \"movie\"}
+              ],
+              \"crew\": []
+            }
+        """));
+        Mockito.when(request.get()).thenReturn(CompletableFuture.completedFuture(response));
+
+        PersonStatsService service = new PersonStatsService(ws, tmdbConfig);
+        List<PersonKnownForItemDTO> items = service.getKnownForItems(personId).toCompletableFuture().join();
+
+        assertEquals(2, items.size());
+
+        PersonKnownForItemDTO tv = items.get(0);
+        assertEquals(Integer.valueOf(2), tv.getId());
+        assertEquals("TV Name", tv.getTitle());
+        assertEquals("2021-05-10", tv.getReleaseDate());
+
+        PersonKnownForItemDTO missing = items.get(1);
+        assertEquals(Integer.valueOf(3), missing.getId());
+        assertEquals("", missing.getTitle());
+        assertEquals("", missing.getReleaseDate());
+    }
+
+    @Test
+    public void testGetKnownForItemsReturnsEmptyListWhenJsonIsNull() {
+        Integer personId = 500;
+
+        WSClient ws = Mockito.mock(WSClient.class);
+        WSRequest request = Mockito.mock(WSRequest.class);
+        WSResponse response = Mockito.mock(WSResponse.class);
+
+        TmdbConfig tmdbConfig = Mockito.mock(TmdbConfig.class);
+        Mockito.when(tmdbConfig.getBaseUrl()).thenReturn("https://api.themoviedb.org/3");
+        Mockito.when(tmdbConfig.getApiKey()).thenReturn("test-api-key");
+
+        String expectedUrl = "https://api.themoviedb.org/3/person/" + personId + "/combined_credits";
+        Mockito.when(ws.url(expectedUrl)).thenReturn(request);
+        Mockito.when(request.addQueryParameter(Mockito.anyString(), Mockito.anyString())).thenReturn(request);
+
+        Mockito.when(response.asJson()).thenReturn(null);
+        Mockito.when(request.get()).thenReturn(CompletableFuture.completedFuture(response));
+
+        PersonStatsService service = new PersonStatsService(ws, tmdbConfig);
+        List<PersonKnownForItemDTO> items = service.getKnownForItems(personId).toCompletableFuture().join();
+
+        assertEquals(0, items.size());
+    }
+
+    @Test
+    public void testToKnownForItemHandlesMissingMediaType() {
+        Integer personId = 500;
+
+        WSClient ws = Mockito.mock(WSClient.class);
+        WSRequest request = Mockito.mock(WSRequest.class);
+        WSResponse response = Mockito.mock(WSResponse.class);
+
+        TmdbConfig tmdbConfig = Mockito.mock(TmdbConfig.class);
+        Mockito.when(tmdbConfig.getBaseUrl()).thenReturn("https://api.themoviedb.org/3");
+        Mockito.when(tmdbConfig.getApiKey()).thenReturn("test-api-key");
+
+        String expectedUrl = "https://api.themoviedb.org/3/person/" + personId + "/combined_credits";
+        Mockito.when(ws.url(expectedUrl)).thenReturn(request);
+        Mockito.when(request.addQueryParameter(Mockito.anyString(), Mockito.anyString())).thenReturn(request);
+
+        Mockito.when(response.asJson()).thenReturn(Json.parse("""
+            {
+              \"cast\": [
+                {\"id\": 10, \"title\": \"No MediaType\", \"release_date\": \"2020-01-01\"}
+              ],
+              \"crew\": []
+            }
+        """));
+        Mockito.when(request.get()).thenReturn(CompletableFuture.completedFuture(response));
+
+        PersonStatsService service = new PersonStatsService(ws, tmdbConfig);
+        List<PersonKnownForItemDTO> items = service.getKnownForItems(personId).toCompletableFuture().join();
+
+        assertEquals(1, items.size());
+        assertEquals(Integer.valueOf(10), items.get(0).getId());
+        assertEquals("", items.get(0).getMediaType());
+        assertEquals("https://www.themoviedb.org/movie/10", items.get(0).getTmdbUrl());
+    }
+
+    @Test
+    public void testParseDateNullReturnsEmptyOptional() throws Exception {
+        WSClient ws = Mockito.mock(WSClient.class);
+        TmdbConfig tmdbConfig = Mockito.mock(TmdbConfig.class);
+        PersonStatsService service = new PersonStatsService(ws, tmdbConfig);
+
+        Method m = PersonStatsService.class.getDeclaredMethod("parseDate", String.class);
+        m.setAccessible(true);
+
+        @SuppressWarnings("unchecked")
+        Optional<?> result = (Optional<?>) m.invoke(service, new Object[] { null });
+
+        assertTrue(result.isEmpty());
     }
 
     @Test
