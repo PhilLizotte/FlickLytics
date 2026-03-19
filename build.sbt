@@ -24,7 +24,8 @@ jacocoExcludes := Seq(
   "controllers.ReverseTmdbSearchController",
   "controllers.routes",
   "controllers.routes.javascript.*",
-  "controllers.ReverseAssets"
+  "controllers.ReverseAssets",
+  "models.mapper.TmdbMapper.this"
 )
 
 addCommandAlias("javadoc", "doc")

@@ -14,7 +14,6 @@ import services.features.financial.FinancialPerformanceService;
 import services.features.personstats.PersonStatsService;
 import services.features.readability.ReadabilityService;
 import services.features.reviews.ReviewSentimentService;
-import models.domain.Review;
 
 import services.tmdb.TmdbSearchService;
 
@@ -62,6 +61,14 @@ public class TmdbSearchController extends Controller {
         return ok(views.html.index.render());
     }
 
+    /**
+     * @author Aram Zand
+     * 
+     *         Renders the known for page
+     * 
+     * @param id id of person
+     * @return The status of the request
+     */
     public CompletionStage<Result> knownFor(Integer id) {
         return personStatsService.getKnownForPage(id)
                 .thenApply(page -> ok(views.html.personKnownFor.render(id, page.getItems(), page.getPopularityStats(),
@@ -121,58 +128,27 @@ public class TmdbSearchController extends Controller {
     }
 
     /**
-     * An action that renders an HTML page displaying financial information for a
-     * movie based on its <code>id</code>. This feature is only intended for movies,
-     * and does not work with shows or people.
+     * Searches for movie by id
      * 
      * @author Philippe Lizotte
-     *
-     * @param id The id of the movie for which the financial information is being
-     *           returned.
-     * @return The status of the request, indicating if it was executed
-     *         successfully, or if not, the error code.
+     * @param id The id of the movie
+     * @return Status of the request
      */
-    public CompletionStage<Result> finances(int id) {
-        return fpService.getMovieFinances(id)
-                .handle((json, ex) -> {
-                    if (ex != null) {
-                        return badRequest("Movie not found");
-                    }
-
-                    String title = json.path("title").asText();
-                    String netProfit = json.path("netProfit").asText();
-                    String roiPercent = json.path("roiPercent").asText() + "%";
-                    String financialRating = json.path("financialRating").asText();
-
-                    return ok(views.html.financialPerformance.render(title, netProfit, roiPercent, financialRating));
-                });
-    }
-
-    public CompletionStage<Result> finances(int id) {
-        return fpService.searchMovieById(id)
-                .handle((json, ex) -> {
-                    if (ex != null) {
-                        return badRequest("Movie not found");
-                    }
-
-                    String title = json.path("title").asText();
-                    String netProfit = json.path("netProfit").asText();
-                    boolean validROI = json.path("validROI").asBoolean();
-                    String roiPercent = json.path("roiPercent").asText() + "%";
-                    if (!validROI)
-                        roiPercent = "Unknown; This movie has no recorded budget.";
-                    String financialRating = json.path("financialRating").asText();
-
-                    return ok(views.html.financialPerformance.render(title, netProfit, roiPercent, financialRating));
-                });
-    }
-
     public CompletionStage<Result> searchMovieById(int id) {
-        return fpService.searchMovieById(id)
+        return fpService.getMovieFinances(id)
                 .thenApply((JsonNode json) -> ok(json))
                 .exceptionally(ex -> badRequest("Unknown movie ID"));
     }
 
+    /**
+     * Renders the global diversity page
+     * 
+     * @author Chama Amri Toudrhi
+     * 
+     * @param category movie or tv
+     * @param id       id of the movie or tv show
+     * @return Status of the request
+     */
     public CompletionStage<Result> globalDiversity(String category, Integer id) {
         if (category == null || category.trim().isEmpty()) {
             return CompletableFuture.completedFuture(badRequest("Missing category"));
@@ -189,6 +165,8 @@ public class TmdbSearchController extends Controller {
      * Handles the request to show movie details.
      * Fetches the movie from TMDb, calculates readability scores,
      * and renders the movieDetails view.
+     * 
+     * @author Seyed Ali Mohammad Maher
      *
      * @param id the unique identifier of the movie
      * @return a CompletionStage that will complete with an HTTP Result rendering
@@ -208,17 +186,49 @@ public class TmdbSearchController extends Controller {
                 });
     }
 
+    /**
+     * 
+     * 
+     * Handles the request to show TV show details.
+     * Fetches the TV show from TMDb, calculates readability scores,
+     * and renders the tvDetails view.
+     * 
+     * @author Seyed Ali Mohammad Maher
+     * 
+     * @param id the unique identifier of the TV show
+     * @return a CompletionStage that will complete with an HTTP Result rendering
+     *         the tvDetails page
+     */
     public CompletionStage<Result> tvDetails(Integer id) {
         return tmdbSearchService.tvDetails(id)
                 .thenApply(tvShow -> {
                     double readingScore = readabilityService.calculateFleschReaddingEase(tvShow.getOverview());
 
-                    double gradeLevel = readabilityService.calculateFleschKincaidGradeLevel(tvShowDTO.getOverview());
+                    double gradeLevel = readabilityService.calculateFleschKincaidGradeLevel(tvShow.getOverview());
 
                     return ok(views.html.tvDetails.render(
                             tvShow,
                             readingScore,
                             gradeLevel));
+                });
+    }
+
+    /**
+     * Renders the review details page
+     * 
+     * @author Craig Kogan
+     * 
+     * @param kind  movie or tv
+     * @param id    id of movie or tv show
+     * @param title title of movie/tv show
+     * @return Status of the request
+     */
+    public CompletionStage<Result> reviewDetails(String kind, Integer id, String title) {
+        return reviewSentimentService.fetchReviews(kind, id)
+                .thenApply(reviews -> {
+                    return ok(views.html.reviews.render(
+                            title,
+                            reviews));
                 });
     }
 }
