@@ -1,14 +1,35 @@
 package services.tmdb;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.junit.Test;
 import play.libs.Json;
 import play.libs.ws.WSClient;
 import play.libs.ws.WSRequest;
 import play.libs.ws.WSResponse;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import com.fasterxml.jackson.databind.node.NullNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.lang.reflect.Method;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.util.*;
+import java.util.concurrent.CompletionStage;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.*;
+
+import play.libs.ws.*;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -18,6 +39,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
 
 /**
  * Unit tests for {@link TmdbSearchService}.
@@ -244,4 +267,421 @@ public class TmdbSearchServiceTest {
         verify(ws, times(1)).url(baseUrl + "/genre/tv/list");
     }
 
+    @Test
+    public void shouldAddEmptyGenres_whenGenreIdsMissing() throws Exception {
+        ObjectNode node = Json.newObject();
+        Map<Integer, String> genreMap = new HashMap<>();
+
+        TmdbSearchService service = new TmdbSearchService(null, null);
+
+        Field field = TmdbSearchService.class.getDeclaredField("objectMapper");
+        field.setAccessible(true);
+        field.set(service, new ObjectMapper());
+
+        Method method = TmdbSearchService.class.getDeclaredMethod("addGenreNames", ObjectNode.class, Map.class);
+        method.setAccessible(true);
+
+        method.invoke(service, node, genreMap);
+
+        assertEquals(0, node.get("genres").size());
+    }
+
+    @Test
+    public void shouldAddEmptyGenres_whenGenreIdsNotArray() throws Exception {
+        ObjectNode node = Json.newObject();
+        node.put("genre_ids", 123);
+
+        Map<Integer, String> genreMap = new HashMap<>();
+
+        TmdbSearchService service = new TmdbSearchService(null, null);
+
+        Field field = TmdbSearchService.class.getDeclaredField("objectMapper");
+        field.setAccessible(true);
+        field.set(service, new ObjectMapper());
+
+        Method method = TmdbSearchService.class.getDeclaredMethod("addGenreNames", ObjectNode.class, Map.class);
+        method.setAccessible(true);
+
+        method.invoke(service, node, genreMap);
+
+        assertEquals(0, node.get("genres").size());
+    }
+
+    @Test
+    public void shouldAddOnlyValidGenres() throws Exception {
+        ObjectNode node = Json.newObject();
+        ArrayNode ids = Json.newArray();
+        ids.add(1);
+        ids.add(2);
+        ids.add(999);
+        node.set("genre_ids", ids);
+
+        Map<Integer, String> genreMap = new HashMap<>();
+        genreMap.put(1, "Action");
+        genreMap.put(2, "Comedy");
+
+        TmdbSearchService service = new TmdbSearchService(null, null);
+
+        Field field = TmdbSearchService.class.getDeclaredField("objectMapper");
+        field.setAccessible(true);
+        field.set(service, new ObjectMapper());
+
+        Method method = TmdbSearchService.class.getDeclaredMethod("addGenreNames", ObjectNode.class, Map.class);
+        method.setAccessible(true);
+
+        method.invoke(service, node, genreMap);
+
+        ArrayNode result = (ArrayNode) node.get("genres");
+
+        assertEquals(2, result.size());
+        assertEquals("Action", result.get(0).asText());
+        assertEquals("Comedy", result.get(1).asText());
+    }
+
+    @Test
+    public void shouldIgnoreNonIntValues() throws Exception {
+        ObjectNode node = Json.newObject();
+        ArrayNode ids = Json.newArray();
+        ids.add("abc");
+        ids.add(1);
+        node.set("genre_ids", ids);
+
+        Map<Integer, String> genreMap = new HashMap<>();
+        genreMap.put(1, "Action");
+
+        TmdbSearchService service = new TmdbSearchService(null, null);
+
+        // inject objectMapper
+        Field field = TmdbSearchService.class.getDeclaredField("objectMapper");
+        field.setAccessible(true);
+        field.set(service, new ObjectMapper());
+
+        Method method = TmdbSearchService.class.getDeclaredMethod("addGenreNames", ObjectNode.class, Map.class);
+        method.setAccessible(true);
+
+        method.invoke(service, node, genreMap);
+
+        ArrayNode result = (ArrayNode) node.get("genres");
+
+        assertEquals(1, result.size());
+        assertEquals("Action", result.get(0).asText());
+    }
+
+    @Test
+    public void shouldReturnEmpty_whenProfilePathIsMissing() throws Exception {
+        ObjectNode node = Json.newObject();
+
+        TmdbSearchService service = mock(TmdbSearchService.class);
+
+        Method method = TmdbSearchService.class.getDeclaredMethod("profileUrl", ObjectNode.class);
+        method.setAccessible(true);
+
+        String result = (String) method.invoke(service, node);
+
+        assertEquals("", result);
+    }
+
+    @Test
+    public void shouldReturnEmpty_whenProfilePathIsNull() throws Exception {
+        ObjectNode node = Json.newObject();
+        node.set("profile_path", NullNode.instance);
+
+        TmdbSearchService service = mock(TmdbSearchService.class);
+
+        Method method = TmdbSearchService.class.getDeclaredMethod("profileUrl", ObjectNode.class);
+        method.setAccessible(true);
+
+        String result = (String) method.invoke(service, node);
+
+        assertEquals("", result);
+    }
+
+    @Test
+    public void shouldReturnEmpty_whenProfilePathIsNotText() throws Exception {
+        ObjectNode node = Json.newObject();
+        node.put("profile_path", 123);
+
+        TmdbSearchService service = mock(TmdbSearchService.class);
+
+        Method method = TmdbSearchService.class.getDeclaredMethod("profileUrl", ObjectNode.class);
+        method.setAccessible(true);
+
+        String result = (String) method.invoke(service, node);
+
+        assertEquals("", result);
+    }
+
+    @Test
+    public void shouldReturnUrl_whenProfilePathIsValid() throws Exception {
+        ObjectNode node = Json.newObject();
+        node.put("profile_path", "/abc.jpg");
+
+        TmdbSearchService service = mock(TmdbSearchService.class);
+
+        Method method = TmdbSearchService.class.getDeclaredMethod("profileUrl", ObjectNode.class);
+        method.setAccessible(true);
+
+        String result = (String) method.invoke(service, node);
+
+        assertEquals("https://image.tmdb.org/t/p/original/abc.jpg", result);
+    }
+
+    @Test
+    public void shouldSetFields_whenMovieAndFieldsExist() throws Exception {
+        ObjectNode node = Json.newObject();
+        node.put("release_date", "2020-01-01");
+        node.put("original_language", "en");
+
+        TmdbSearchService service = new TmdbSearchService(null, null);
+
+        Method method = TmdbSearchService.class.getDeclaredMethod(
+                "normalizeCommonMovieTvFields", ObjectNode.class, boolean.class);
+        method.setAccessible(true);
+
+        method.invoke(service, node, true);
+
+        assertEquals("2020-01-01", node.get("releaseDate").asText());
+        assertEquals("en", node.get("language").asText());
+    }
+
+    @Test
+    public void shouldNotSetFields_whenMovieAndFieldsMissing() throws Exception {
+        ObjectNode node = Json.newObject();
+
+        TmdbSearchService service = new TmdbSearchService(null, null);
+
+        Method method = TmdbSearchService.class.getDeclaredMethod(
+                "normalizeCommonMovieTvFields", ObjectNode.class, boolean.class);
+        method.setAccessible(true);
+
+        method.invoke(service, node, true);
+
+        assertEquals(null, node.get("releaseDate"));
+        assertEquals(null, node.get("language"));
+    }
+
+    @Test
+    public void shouldSetFields_whenTvAndFieldsExist() throws Exception {
+        ObjectNode node = Json.newObject();
+        node.put("first_air_date", "2019-05-05");
+        node.put("original_language", "fr");
+
+        TmdbSearchService service = new TmdbSearchService(null, null);
+
+        Method method = TmdbSearchService.class.getDeclaredMethod(
+                "normalizeCommonMovieTvFields", ObjectNode.class, boolean.class);
+        method.setAccessible(true);
+
+        method.invoke(service, node, false);
+
+        assertEquals("2019-05-05", node.get("releaseDate").asText());
+        assertEquals("fr", node.get("language").asText());
+    }
+
+    @Test
+    public void shouldNotSetFields_whenTvAndFieldsMissing() throws Exception {
+        ObjectNode node = Json.newObject();
+
+        TmdbSearchService service = new TmdbSearchService(null, null);
+
+        Method method = TmdbSearchService.class.getDeclaredMethod(
+                "normalizeCommonMovieTvFields", ObjectNode.class, boolean.class);
+        method.setAccessible(true);
+
+        method.invoke(service, node, false);
+
+        assertEquals(null, node.get("releaseDate"));
+        assertEquals(null, node.get("language"));
+    }
+
+    //
+    @Test
+    public void shouldUseMinusOne_whenIdMissing() throws Exception {
+        ObjectNode root = Json.newObject();
+        ArrayNode arr = Json.newArray();
+
+        ObjectNode item = Json.newObject(); // no id
+        arr.add(item);
+
+        root.set("results", arr);
+
+        TmdbSearchService service = new TmdbSearchService(null, null);
+
+        Field field = TmdbSearchService.class.getDeclaredField("objectMapper");
+        field.setAccessible(true);
+        field.set(service, new ObjectMapper());
+
+        Method method = TmdbSearchService.class.getDeclaredMethod(
+                "enrichResults", String.class, JsonNode.class, Map.class);
+        method.setAccessible(true);
+
+        JsonNode result = (JsonNode) method.invoke(service, "movie", root, new HashMap<>());
+
+        String url = result.get("results").get(0).get("detailsUrl").asText();
+
+        assertEquals(true, url.contains("-1"));
+    }
+
+    @Test
+    public void shouldSkipInvalidItems() throws Exception {
+        ObjectNode root = Json.newObject();
+        ArrayNode arr = Json.newArray();
+
+        arr.addNull();      // null
+        arr.add(123);       // not object
+
+        root.set("results", arr);
+
+        TmdbSearchService service = new TmdbSearchService(null, null);
+
+        Field field = TmdbSearchService.class.getDeclaredField("objectMapper");
+        field.setAccessible(true);
+        field.set(service, new ObjectMapper());
+
+        Method method = TmdbSearchService.class.getDeclaredMethod(
+                "enrichResults", String.class, JsonNode.class, Map.class);
+        method.setAccessible(true);
+
+        JsonNode result = (JsonNode) method.invoke(service, "movie", root, new HashMap<>());
+
+        assertEquals(0, result.get("results").size());
+    }
+
+    @Test
+    public void shouldReturnRoot_whenResultsNotArray() throws Exception {
+        ObjectNode node = Json.newObject();
+        node.put("results", 123);
+
+        TmdbSearchService service = new TmdbSearchService(null, null);
+
+        Method method = TmdbSearchService.class.getDeclaredMethod(
+                "enrichResults", String.class, JsonNode.class, Map.class);
+        method.setAccessible(true);
+
+        JsonNode result = (JsonNode) method.invoke(service, "movie", node, new HashMap<>());
+
+        assertEquals(true, result.get("results").isInt());
+    }
+
+    @Test
+    public void shouldReturnRoot_whenResultsMissing() throws Exception {
+        ObjectNode node = Json.newObject();
+
+        TmdbSearchService service = new TmdbSearchService(null, null);
+
+        Method method = TmdbSearchService.class.getDeclaredMethod(
+                "enrichResults", String.class, JsonNode.class, Map.class);
+        method.setAccessible(true);
+
+        JsonNode result = (JsonNode) method.invoke(service, "movie", node, new HashMap<>());
+
+        assertEquals(true, result.has("results") == false);
+    }
+
+    @Test
+    public void shouldReturnSame_whenSearchJsonNotObject() throws Exception {
+        JsonNode node = Json.newArray(); // 👈 not object
+
+        TmdbSearchService service = new TmdbSearchService(null, null);
+
+        Method method = TmdbSearchService.class.getDeclaredMethod(
+                "enrichResults", String.class, JsonNode.class, Map.class);
+        method.setAccessible(true);
+
+        JsonNode result = (JsonNode) method.invoke(service, "movie", node, new HashMap<>());
+
+        assertEquals(node, result);
+    }
+
+    @Test
+    public void shouldReturnNull_whenSearchJsonIsNull() throws Exception {
+        TmdbSearchService service = new TmdbSearchService(null, null);
+
+        Method method = TmdbSearchService.class.getDeclaredMethod(
+                "enrichResults", String.class, JsonNode.class, Map.class);
+        method.setAccessible(true);
+
+        JsonNode result = (JsonNode) method.invoke(service, "movie", null, new HashMap<>());
+
+        assertEquals(null, result);
+    }
+
+    @Test
+    public void shouldSkipPersonBranch_whenCategoryIsSomethingElse() throws Exception {
+        ObjectNode root = Json.newObject();
+        ArrayNode arr = Json.newArray();
+
+        ObjectNode item = Json.newObject();
+        item.put("id", 5);
+
+        arr.add(item);
+        root.set("results", arr);
+
+        TmdbSearchService service = new TmdbSearchService(null, null);
+
+        Field field = TmdbSearchService.class.getDeclaredField("objectMapper");
+        field.setAccessible(true);
+        field.set(service, new ObjectMapper());
+
+        Method method = TmdbSearchService.class.getDeclaredMethod(
+                "enrichResults", String.class, JsonNode.class, Map.class);
+        method.setAccessible(true);
+
+        JsonNode result = (JsonNode) method.invoke(service, "unknown", root, new HashMap<>());
+
+        JsonNode res = result.get("results").get(0);
+
+        assertEquals(false, res.has("photoUrl"));
+        assertEquals(false, res.has("knownForUrl"));
+    }
+
+
+    @Mock
+    WSClient ws;
+    @Mock
+    WSRequest wsRequest;
+    @Mock
+    WSResponse wsResponse;
+    @Mock
+    TmdbConfig tmdbConfig;
+    @InjectMocks
+    TmdbSearchService service;
+    @Before
+    public void setup() throws Exception {
+        MockitoAnnotations.initMocks(this);
+        
+        Field cacheField = TmdbSearchService.class.getDeclaredField("genreCache");
+        cacheField.setAccessible(true);
+        Map<String, Object> genreCache = (Map<String, Object>) cacheField.get(service);
+        genreCache.clear();
+    }
+    
+    @Test
+    public void testCacheNullTriggersHttpCall() throws Exception {
+        // Mock HTTP
+        when(tmdbConfig.getBaseUrl()).thenReturn("http://fakeurl");
+        when(tmdbConfig.getApiKey()).thenReturn("fakeKey");
+        when(ws.url(anyString())).thenReturn(wsRequest);
+        when(wsRequest.addQueryParameter(anyString(), anyString())).thenReturn(wsRequest);
+        when(wsRequest.get()).thenReturn(CompletableFuture.completedFuture(wsResponse));
+
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode json = mapper.readTree("{\"genres\":[{\"id\":1,\"name\":\"Action\"}]}");
+        when(wsResponse.asJson()).thenReturn(json);
+        
+        Method fetchMethod = TmdbSearchService.class.getDeclaredMethod("fetchGenreMap", String.class);
+        fetchMethod.setAccessible(true);
+        CompletionStage<Map<Integer, String>> resultStage =
+                (CompletionStage<Map<Integer, String>>) fetchMethod.invoke(service, "movie");
+
+        Map<Integer, String> result = resultStage.toCompletableFuture().get();
+
+        assertEquals(1, result.size());
+        assertEquals("Action", result.get(1));
+        
+        Field cacheField = TmdbSearchService.class.getDeclaredField("genreCache");
+        cacheField.setAccessible(true);
+        Map<String, Object> genreCache = (Map<String, Object>) cacheField.get(service);
+        assertTrue(genreCache.containsKey("movie"));
+    }
 }

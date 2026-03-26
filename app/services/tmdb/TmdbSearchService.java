@@ -16,6 +16,7 @@ import play.libs.ws.WSClient;
 import play.libs.ws.WSRequest;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
@@ -111,7 +112,7 @@ public class TmdbSearchService {
      */
     private CompletionStage<Map<Integer, String>> fetchGenreMap(String kind) {
         GenreCacheEntry cached = genreCache.get(kind);
-        if (cached != null && !cached.isExpired()) {
+        if (Optional.ofNullable(cached).map(c -> !c.isExpired()).orElse(false)) {
             return CompletableFuture.completedFuture(cached.map);
         }
 
@@ -239,7 +240,7 @@ public class TmdbSearchService {
 
         ArrayNode newResults = objectMapper.createArrayNode();
         for (JsonNode item : resultsNode) {
-            if (item == null || !item.isObject()) {
+            if (!item.isObject()) {
                 continue;
             }
             ObjectNode o = ((ObjectNode) item).deepCopy();
@@ -309,7 +310,7 @@ public class TmdbSearchService {
         ArrayNode names = objectMapper.createArrayNode();
         if (idsNode != null && idsNode.isArray()) {
             for (JsonNode idNode : idsNode) {
-                if (idNode != null && idNode.isInt()) {
+                if (idNode.isInt()) {
                     String name = genreMap.get(idNode.asInt());
                     if (name != null) {
                         names.add(name);
