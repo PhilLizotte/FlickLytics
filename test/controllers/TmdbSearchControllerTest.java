@@ -1,11 +1,13 @@
 package controllers;
 
 import org.junit.Test;
+import org.junit.Before;
 import play.Application;
 import play.inject.guice.GuiceApplicationBuilder;
 import play.mvc.Http;
 import play.mvc.Result;
 import play.test.WithApplication;
+import services.features.diversity.GlobalDiversityService;
 import services.features.financial.FinancialPerformanceService;
 import services.features.personstats.PersonStatsService;
 import services.features.readability.ReadabilityService;
@@ -32,6 +34,7 @@ import static play.mvc.Http.Status.INTERNAL_SERVER_ERROR;
 import static play.mvc.Http.Status.OK;
 import static play.test.Helpers.*;
 import static play.inject.Bindings.bind;
+import static org.mockito.Mockito.*;
 
 /**
  * Unit tests for {@link controllers.TmdbSearchController}.
@@ -40,6 +43,8 @@ import static play.inject.Bindings.bind;
  * and failure cases,
  * including the person known-for endpoint.
  * </p>
+ *
+ * @author team-2
  */
 public class TmdbSearchControllerTest extends WithApplication {
 
@@ -203,6 +208,59 @@ public class TmdbSearchControllerTest extends WithApplication {
 
                 Result result = route(app, request);
                 assertEquals(OK, result.status());
+        }
+
+        private TmdbSearchController controller;
+
+        @Before
+        public void setup() {
+                GlobalDiversityService service = mock(GlobalDiversityService.class);
+                controller = new TmdbSearchController(null, null, null, null, service, null);
+        }
+
+        @Test
+        public void shouldReturnBadRequest_whenCategoryIsBlank() throws Exception {
+                Result result = controller.globalDiversity("   ", 1).toCompletableFuture().get();
+
+                assertEquals(BAD_REQUEST, result.status());
+        }
+
+        @Test
+        public void shouldReturnBadRequest_whenCategoryIsNull() throws Exception {
+                Result result = controller.globalDiversity(null, 1).toCompletableFuture().get();
+
+                assertEquals(BAD_REQUEST, result.status());
+        }
+
+        @Test
+        public void shouldReturnBadRequest_whenCategoryIsNull_2() throws Exception {
+                Result result = controller.search(null, "query").toCompletableFuture().get();
+                assertEquals(BAD_REQUEST, result.status());
+        }
+
+        @Test
+        public void shouldReturnBadRequest_whenCategoryIsBlank_2() throws Exception {
+                Result result = controller.search("   ", "query").toCompletableFuture().get();
+                assertEquals(BAD_REQUEST, result.status());
+        }
+
+        @Test
+        public void shouldReturnBadRequest_whenQueryIsNull() throws Exception {
+                Result result = controller.search("movie", null).toCompletableFuture().get();
+                assertEquals(BAD_REQUEST, result.status());
+        }
+
+        @Test
+        public void shouldReturnBadRequest_whenQueryIsBlank() throws Exception {
+                Result result = controller.search("movie", "   ").toCompletableFuture().get();
+                assertEquals(BAD_REQUEST, result.status());
+        }
+
+        @Test
+        public void shouldReturnBadRequest_whenIdIsNull() throws Exception {
+                Result result = controller.globalDiversity("movie", null).toCompletableFuture().get();
+
+                assertEquals(BAD_REQUEST, result.status());
         }
 
         // @Test
