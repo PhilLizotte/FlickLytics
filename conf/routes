@@ -18,3 +18,5 @@ GET     /assets/*file               controllers.Assets.versioned(path="/public",
 
 GET     /movie/:id                  controllers.TmdbSearchController.movieDetails(id: Integer)
 GET     /tv/:id                     controllers.TmdbSearchController.tvDetails(id: Integer)
+
+GET     /ws                         controllers.TmdbSearchController.ws
