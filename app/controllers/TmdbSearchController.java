@@ -1,19 +1,22 @@
 package controllers;
 
 
+import actors.UserParentActor;
 import actors.readability.ReadabilityActor;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.inject.Inject;
 import models.dto.GlobalDiversityStats;
+import org.apache.pekko.NotUsed;
 import org.apache.pekko.actor.ActorSystem;
 import org.apache.pekko.actor.typed.ActorRef;
 import org.apache.pekko.actor.typed.Props;
 import org.apache.pekko.actor.typed.Scheduler;
 import org.apache.pekko.actor.typed.javadsl.Adapter;
 import org.apache.pekko.actor.typed.javadsl.AskPattern;
+import org.apache.pekko.stream.javadsl.Flow;
 import org.slf4j.Logger;
-import play.mvc.Controller;
-import play.mvc.Result;
+import play.libs.F.Either;
+import play.mvc.*;
 import services.features.diversity.GlobalDiversityService;
 import services.features.financial.FinancialPerformanceService;
 import services.features.personstats.PersonStatsService;
@@ -22,6 +25,9 @@ import services.features.reviews.ReviewSentimentService;
 import services.tmdb.TmdbSearchService;
 
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
@@ -45,6 +51,9 @@ public class TmdbSearchController extends Controller {
     private final ReviewSentimentService reviewSentimentService;
     // second delivery - gp
     private final ActorSystem actorSystem;
+    private final Duration timeout = Duration.ofSeconds(1);
+    private final Logger logger = org.slf4j.LoggerFactory.getLogger("controllers.TmdbSearchController");
+    private final ActorRef<UserParentActor.Command> userParentActor;
     // second delivery - individual
     private final ActorRef<ReadabilityActor.Command> readabilityActor;
     private final Scheduler scheduler;
@@ -70,6 +79,103 @@ public class TmdbSearchController extends Controller {
         this.readabilityActor = typedSystem.systemActorOf(ReadabilityActor.create(readabilityService),
                 "readabilityActor", Props.empty());
         this.scheduler = typedSystem.scheduler();
+        // GP part
+        this.userParentActor =
+                typedSystem.systemActorOf(UserParentActor.create(),
+                        "userParentActor", Props.empty());
+    }
+
+    /**
+     * setting up the web socket
+     *
+     * @author Ali Maher
+     */
+    public WebSocket ws() {
+        return WebSocket.Json.acceptOrResult(request -> {
+            if (sameOriginCheck(request)) {
+                final CompletionStage<Flow<JsonNode, JsonNode, NotUsed>> future = wsFutureFlow(request);
+                final CompletionStage<Either<Result, Flow<JsonNode, JsonNode, ?>>> stage = future.thenApply(Either::Right);
+                return stage.exceptionally(this::logException);
+            } else {
+                return forbiddenResult();
+            }
+        });
+    }
+
+    /**
+     * Helper method to create the WebSocket flow for a given request.
+     *
+     * @author Ali Maher
+     */
+    private CompletionStage<Flow<JsonNode, JsonNode, NotUsed>> wsFutureFlow(Http.RequestHeader request) {
+        String id = Long.toString(request.asScala().id());
+        Scheduler scheduler =
+                Adapter.toTyped((org.apache.pekko.actor.Scheduler) actorSystem.scheduler());
+
+        return AskPattern.ask(
+                userParentActor,
+                (ActorRef<Flow<JsonNode, JsonNode, NotUsed>> replyTo) ->
+                        new UserParentActor.Create(id, replyTo),
+                timeout,
+                scheduler
+        );
+    }
+
+    /**
+     * Helper method to return a forbidden result when the same-origin check fails.
+     *
+     * @author Ali Maher
+     */
+    private CompletionStage<Either<Result, Flow<JsonNode, JsonNode, ?>>> forbiddenResult() {
+        final Result forbidden = Results.forbidden("forbidden");
+        final Either<Result, Flow<JsonNode, JsonNode, ?>> left = Either.Left(forbidden);
+
+        return CompletableFuture.completedFuture(left);
+    }
+
+    /**
+     * @author Ali Maher
+     *
+     * Helper method to log exceptions that occur during WebSocket flow creation.
+     */
+    private Either<Result, Flow<JsonNode, JsonNode, ?>> logException(Throwable throwable) {
+        logger.error("Cannot create websocket", throwable);
+        Result result = Results.internalServerError("error");
+        return Either.Left(result);
+    }
+
+    /**
+     * Checks that the WebSocket comes from the same origin.  This is necessary to protect
+     * against Cross-Site WebSocket Hijacking as WebSocket does not implement Same Origin Policy.
+     * <p>
+     *
+     * @author Ali Maher
+     *
+     */
+    private boolean sameOriginCheck(Http.RequestHeader rh) {
+        final Optional<String> origin = rh.header("Origin");
+
+        if (! origin.isPresent()) {
+            logger.error("originCheck: rejecting request because no Origin header found");
+            return false;
+        } else if (originMatches(origin.get())) {
+            logger.debug("originCheck: originValue = " + origin);
+            return true;
+        } else {
+            logger.error("originCheck: rejecting request because Origin header value " + origin + " is not in the same origin: "
+                    + String.join(", ", validOrigins));
+            return false;
+        }
+    }
+
+    /**
+     * Helper method to check if the actual origin matches any of the valid origins.
+     *
+     * @author Ali Maher
+     */
+    private final List<String> validOrigins = Arrays.asList("localhost:9000");
+    private boolean originMatches(String actualOrigin) {
+        return validOrigins.stream().anyMatch(actualOrigin::contains);
     }
 
     /**
