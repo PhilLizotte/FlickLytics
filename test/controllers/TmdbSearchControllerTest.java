@@ -1,5 +1,6 @@
 package controllers;
 
+import org.apache.pekko.actor.ActorSystem;
 import org.junit.Test;
 import org.junit.Before;
 import play.Application;
@@ -215,7 +216,8 @@ public class TmdbSearchControllerTest extends WithApplication {
         @Before
         public void setup() {
                 GlobalDiversityService service = mock(GlobalDiversityService.class);
-                controller = new TmdbSearchController(null, null, null, null, service, null, null);
+                ActorSystem actorSystem = ActorSystem.create("test-system");
+                controller = new TmdbSearchController(null, null, null, null, service, null, actorSystem);
         }
 
         @Test
