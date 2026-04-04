@@ -215,7 +215,7 @@ public class TmdbSearchControllerTest extends WithApplication {
         @Before
         public void setup() {
                 GlobalDiversityService service = mock(GlobalDiversityService.class);
-                controller = new TmdbSearchController(null, null, null, null, service, null);
+                controller = new TmdbSearchController(null, null, null, null, service, null, null);
         }
 
         @Test

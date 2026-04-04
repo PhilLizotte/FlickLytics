@@ -10,6 +10,10 @@ libraryDependencies += guice
 libraryDependencies += javaWs
 libraryDependencies += "jakarta.inject" % "jakarta.inject-api" % "2.0.1"
 libraryDependencies += "org.mockito" % "mockito-core" % "5.14.1" % Test
+libraryDependencies ++= Seq(
+  "org.apache.pekko" %% "pekko-actor-typed" % "1.0.2",
+  "com.typesafe.akka" %% "akka-stream" % "2.6.20"
+)
 jacocoReportSettings := JacocoReportSettings()
 Test / javaSource := baseDirectory.value / "test"
 jacocoExcludes := Seq(

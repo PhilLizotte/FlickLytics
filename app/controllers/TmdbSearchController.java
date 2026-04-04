@@ -1,21 +1,29 @@
 package controllers;
 
+
+import actors.readability.ReadabilityActor;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.inject.Inject;
+import models.dto.GlobalDiversityStats;
+import org.apache.pekko.actor.ActorSystem;
+import org.apache.pekko.actor.typed.ActorRef;
+import org.apache.pekko.actor.typed.Props;
+import org.apache.pekko.actor.typed.Scheduler;
+import org.apache.pekko.actor.typed.javadsl.Adapter;
+import org.apache.pekko.actor.typed.javadsl.AskPattern;
+import org.slf4j.Logger;
 import play.mvc.Controller;
 import play.mvc.Result;
-
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import models.dto.GlobalDiversityStats;
 import services.features.diversity.GlobalDiversityService;
-
 import services.features.financial.FinancialPerformanceService;
 import services.features.personstats.PersonStatsService;
 import services.features.readability.ReadabilityService;
 import services.features.reviews.ReviewSentimentService;
-
 import services.tmdb.TmdbSearchService;
+
+import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 /**
  * Controller providing TMDb search and detail endpoints.
@@ -25,7 +33,8 @@ import services.tmdb.TmdbSearchService;
  * Delegates data fetching and computations to the corresponding services.
  * </p>
  *
- *
+ * @author all_team_members
+ * 
  */
 public class TmdbSearchController extends Controller {
     private final TmdbSearchService tmdbSearchService;
@@ -34,6 +43,11 @@ public class TmdbSearchController extends Controller {
     private final ReadabilityService readabilityService;
     private final GlobalDiversityService globalDiversityService;
     private final ReviewSentimentService reviewSentimentService;
+    // second delivery - gp
+    private final ActorSystem actorSystem;
+    // second delivery - individual
+    private final ActorRef<ReadabilityActor.Command> readabilityActor;
+    private final Scheduler scheduler;
 
     @Inject
     public TmdbSearchController(
@@ -42,13 +56,20 @@ public class TmdbSearchController extends Controller {
             PersonStatsService personStatsService,
             ReadabilityService readabilityService,
             GlobalDiversityService globalDiversityService,
-            ReviewSentimentService reviewSentimentService) {
+            ReviewSentimentService reviewSentimentService,
+            ActorSystem classicActorSystem){
         this.tmdbSearchService = tmdbSearchService;
         this.fpService = fpService;
         this.personStatsService = personStatsService;
         this.readabilityService = readabilityService;
         this.globalDiversityService = globalDiversityService;
         this.reviewSentimentService = reviewSentimentService;
+        org.apache.pekko.actor.typed.ActorSystem<Void> typedSystem =
+                Adapter.toTyped(classicActorSystem);
+        this.actorSystem = classicActorSystem;
+        this.readabilityActor = typedSystem.systemActorOf(ReadabilityActor.create(readabilityService),
+                "readabilityActor", Props.empty());
+        this.scheduler = typedSystem.scheduler();
     }
 
     /**
@@ -174,16 +195,20 @@ public class TmdbSearchController extends Controller {
      */
     public CompletionStage<Result> movieDetails(Integer id) {
         return tmdbSearchService.movieDetails(id)
-                .thenApply(movie -> {
-                    double readingScore = readabilityService.calculateFleschReaddingEase(movie.getOverview());
-
-                    double gradeLevel = readabilityService.calculateFleschKincaidGradeLevel(movie.getOverview());
-
-                    return ok(views.html.movieDetails.render(
-                            movie,
-                            readingScore,
-                            gradeLevel));
-                });
+                .thenCompose(movie ->
+                    AskPattern.<ReadabilityActor.Command, ReadabilityActor.Result>ask(
+                            readabilityActor,
+                            replyTo -> new ReadabilityActor.Compute(movie.getOverview(), replyTo),
+                            Duration.ofSeconds(3),
+                            scheduler
+                        ).thenApply(readability ->
+                            ok(views.html.movieDetails.render(
+                                    movie,
+                                    readability.fleschScore,
+                                    readability.gradeLevel
+                            ))
+                        )
+                );
     }
 
     /**
@@ -201,16 +226,20 @@ public class TmdbSearchController extends Controller {
      */
     public CompletionStage<Result> tvDetails(Integer id) {
         return tmdbSearchService.tvDetails(id)
-                .thenApply(tvShow -> {
-                    double readingScore = readabilityService.calculateFleschReaddingEase(tvShow.getOverview());
-
-                    double gradeLevel = readabilityService.calculateFleschKincaidGradeLevel(tvShow.getOverview());
-
-                    return ok(views.html.tvDetails.render(
-                            tvShow,
-                            readingScore,
-                            gradeLevel));
-                });
+                .thenCompose(tvShow ->
+                        AskPattern.<ReadabilityActor.Command, ReadabilityActor.Result>ask(
+                                readabilityActor,
+                                replyTo -> new ReadabilityActor.Compute(tvShow.getOverview(), replyTo),
+                                Duration.ofSeconds(3),
+                                scheduler
+                            ).thenApply(readability ->
+                                ok(views.html.tvDetails.render(
+                                        tvShow,
+                                        readability.fleschScore,
+                                        readability.gradeLevel
+                                ))
+                            )
+                );
     }
 
     /**
