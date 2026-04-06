@@ -28,6 +28,8 @@ import models.dto.PersonKnownForPageDTO;
 import models.dto.PersonKnownForStatsDTO;
 import org.mockito.Mockito;
 
+import org.apache.pekko.actor.typed.*;
+
 import static org.junit.Assert.assertEquals;
 import static play.mvc.Http.Status.BAD_REQUEST;
 import static play.mvc.Http.Status.INTERNAL_SERVER_ERROR;

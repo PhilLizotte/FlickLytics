@@ -22,6 +22,8 @@ import services.tmdb.TmdbConfig;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
+import org.apache.pekko.actor.typed.*;
+
 /**
  * Test suite for testing services/financial/FinancialPerformanceService in the main app
  * 
@@ -48,7 +50,7 @@ public class FinancialPerformanceServiceTest extends WithApplication {
         response = mock(WSResponse.class);
         config = mock(TmdbConfig.class);
 
-        service = new FinancialPerformanceService(ws, config);
+        service = new FinancialPerformanceService(ws, config, mock(ActorSystem.class));
     }
     
     @Override

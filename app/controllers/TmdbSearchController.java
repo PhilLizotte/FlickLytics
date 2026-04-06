@@ -1,13 +1,24 @@
 package controllers;
 
+import actors.fpActors.FinancialPerformanceActor;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.inject.Inject;
+import org.apache.pekko.actor.ActorSelection;
+import org.apache.pekko.actor.typed.ActorRef;
+import org.apache.pekko.actor.typed.Props;
+import static org.apache.pekko.pattern.Patterns.ask;
 import play.mvc.Controller;
 import play.mvc.Result;
 
+import org.apache.pekko.actor.typed.ActorSystem;
+import play.mvc.*;
+import javax.inject.*;
+
+import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import models.dto.GlobalDiversityStats;
+import ref.GreeterMain;
 import services.features.diversity.GlobalDiversityService;
 
 import services.features.financial.FinancialPerformanceService;
@@ -112,6 +123,9 @@ public class TmdbSearchController extends Controller {
      *         successfully, or if not, the error code.
      */
     public CompletionStage<Result> finances(int id) {
+        fpService.getMovieFinances(id);
+        return null;
+        /*
         return fpService.getMovieFinances(id)
                 .handle((json, ex) -> {
                     if (ex != null) {
@@ -125,6 +139,8 @@ public class TmdbSearchController extends Controller {
 
                     return ok(views.html.financialPerformance.render(title, netProfit, roiPercent, financialRating));
                 });
+                */
+         */
     }
 
     /**
@@ -134,11 +150,13 @@ public class TmdbSearchController extends Controller {
      * @param id The id of the movie
      * @return Status of the request
      */
+    /*
     public CompletionStage<Result> searchMovieById(int id) {
         return fpService.getMovieFinances(id)
                 .thenApply((JsonNode json) -> ok(json))
                 .exceptionally(ex -> badRequest("Unknown movie ID"));
     }
+    */
 
     /**
      * Renders the global diversity page
