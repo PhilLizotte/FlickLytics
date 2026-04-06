@@ -69,65 +69,6 @@ public class ReviewSentimentService {
         this.tmdbConfig = tmdbConfig;
     }
 
-    /**
-     * @author Craig Kogan (40175780)
-     * @param kind The kind of media. Accepted inputs are movie and tv
-     * @param id   The id of the movie/tv show. UNUSED
-     * @return A CompletionStage of the complete {@link models.domain.Review Review}
-     *         object
-     * 
-     *         Since each page of reviews contains a maximum of 20 reviews, we need
-     *         to do three API calls
-     *         to fetch the first three pages of reviews.
-     */
-    public CompletionStage<Review> fetchReviews(String kind, int id) {
-        String url = tmdbConfig.getBaseUrl() + "/" + kind + "/" + id + "/reviews";
-        WSRequest request1 = ws.url(url)
-                .addQueryParameter("api_key", tmdbConfig.getApiKey())
-                .addQueryParameter("language", "en-us")
-                .addQueryParameter("page", "1");
-
-        WSRequest request2 = ws.url(url)
-                .addQueryParameter("api_key", tmdbConfig.getApiKey())
-                .addQueryParameter("language", "en-us")
-                .addQueryParameter("page", "2");
-
-        WSRequest request3 = ws.url(url)
-                .addQueryParameter("api_key", tmdbConfig.getApiKey())
-                .addQueryParameter("language", "en-us")
-                .addQueryParameter("page", "3");
-
-        return request1.get()
-                .thenCompose(resp1 -> request2.get().thenCompose(resp2 -> request3.get().thenApply(resp3 -> {
-                    List<String> list = new ArrayList<>();
-                    JsonNode res1 = resp1.asJson().get("results");
-                    JsonNode res2 = resp2.asJson().get("results");
-                    JsonNode res3 = resp3.asJson().get("results");
-
-                    if (res1 != null && res1.isArray()) {
-                        for (JsonNode r : res1) {
-                            list.add(r.get("content").asText());
-                        }
-                    }
-
-                    if (res2 != null && res2.isArray()) {
-                        for (JsonNode r : res2) {
-                            list.add(r.get("content").asText());
-                        }
-                    }
-
-                    if (res3 != null && res3.isArray()) {
-                        for (JsonNode r : res3) {
-                            list.add(r.get("content").asText());
-                            if (list.size() >= 50) {
-                                break;
-                            }
-                        }
-                    }
-                    return extractSentiment(list);
-                })));
-    }
-
     public CompletionStage<List<String>> fetchReviewsAsRawList(String kind, int id) {
         String url = tmdbConfig.getBaseUrl() + "/" + kind + "/" + id + "/reviews";
         WSRequest request1 = ws.url(url)

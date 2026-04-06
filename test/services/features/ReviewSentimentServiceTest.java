@@ -436,7 +436,7 @@ public class ReviewSentimentServiceTest extends WithApplication {
         when(request.get()).thenReturn(
                 CompletableFuture.completedFuture(response));
 
-        CompletionStage<Review> reviewStage = rss.fetchReviews("", -1);
+        CompletionStage<Review> reviewStage = rss.extractSentiment(rss.fetchReviews("", -1));
 
         review = reviewStage.toCompletableFuture().get();
 

@@ -3,7 +3,6 @@ package controllers;
 import actors.UserParentActor;
 import actors.readability.ReadabilityActor;
 import actors.reviews.ReviewActor;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.inject.Inject;
 import models.dto.GlobalDiversityStats;
@@ -25,8 +24,6 @@ import services.features.readability.ReadabilityService;
 import services.features.reviews.ReviewSentimentService;
 import services.tmdb.TmdbSearchService;
 
-import java.lang.ModuleLayer.Controller;
-import java.net.http.WebSocket;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
@@ -81,8 +78,10 @@ public class TmdbSearchController extends Controller {
         this.actorSystem = classicActorSystem;
         this.readabilityActor = typedSystem.systemActorOf(ReadabilityActor.create(readabilityService),
                 "readabilityActor", Props.empty());
+
         this.reviewActor = typedSystem.systemActorOf(ReviewActor.create(reviewSentimentService),
                 "reviewActor", Props.empty());
+
         this.scheduler = typedSystem.scheduler();
         // GP part
         this.userParentActor = typedSystem.systemActorOf(UserParentActor.create(),
@@ -345,20 +344,8 @@ public class TmdbSearchController extends Controller {
                                         readability.gradeLevel))));
     }
 
-    public CompletionStage<Result> reviewDetailsWithActor(String kind, Integer id, String title) {
-        return reviewSentimentService.fetchReviewsAsRawList(kind, id)
-                .thenCompose(reviews -> AskPattern.<ReviewActor.Command, ReviewActor.Result>ask(
-                        reviewActor,
-                        replyTo -> new ReviewActor.Compute(reviews, replyTo),
-                        Duration.ofSeconds(10), scheduler).thenApply(
-                                processedReviews -> ok(views.html.reviews.render(
-                                        title,
-                                        processedReviews))));
-
-    }
-
     /**
-     * Renders the review details page
+     * Renders the review details page via actor
      * 
      * @author Craig Kogan
      * 
@@ -367,12 +354,16 @@ public class TmdbSearchController extends Controller {
      * @param title title of movie/tv show
      * @return Status of the request
      */
-    public CompletionStage<Result> reviewDetails(String kind, Integer id, String title) {
-        return reviewSentimentService.fetchReviews(kind, id)
-                .thenApply(reviews -> {
-                    return ok(views.html.reviews.render(
-                            title,
-                            reviews));
-                });
+    public CompletionStage<Result> reviewDetailsWithActor(String kind, Integer id, String title) {
+        return reviewSentimentService.fetchReviewsAsRawList(kind, id)
+                .thenCompose(reviews -> AskPattern.<ReviewActor.Command, ReviewActor.Result>ask(
+                        reviewActor,
+                        replyTo -> new ReviewActor.Compute(reviews, replyTo),
+                        Duration.ofSeconds(10), scheduler).thenApply(
+                                processedReviews -> ok(views.html.reviews.render(
+                                        title,
+                                        processedReviews.review))));
+
     }
+
 }
