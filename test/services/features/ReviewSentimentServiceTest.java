@@ -81,7 +81,7 @@ public class ReviewSentimentServiceTest extends WithApplication {
 
         String[] expected = { ":-)", ":|", ":|", ":-(", ":-(", ":-)" };
 
-        review = rss.extractSentiment(mockReviews, -1);
+        review = rss.extractSentiment(mockReviews);
         assertEquals("review 0", review.getSentimentAtIndex(0), expected[0]);
         assertEquals("review 1", review.getSentimentAtIndex(1), expected[1]);
         assertEquals("review 2", review.getSentimentAtIndex(2), expected[2]);
@@ -99,7 +99,7 @@ public class ReviewSentimentServiceTest extends WithApplication {
      */
     @Test
     public void noReviewsReviewTest() {
-        review = rss.extractSentiment(mockReviews, -1);
+        review = rss.extractSentiment(mockReviews);
         assertEquals("no reviews", review.getOverallSentiment(), ":|");
     }
 
@@ -122,7 +122,7 @@ public class ReviewSentimentServiceTest extends WithApplication {
         mockReviews.add("bad");
         mockReviews.add("bad");
 
-        review = rss.extractSentiment(mockReviews, -1);
+        review = rss.extractSentiment(mockReviews);
         assertEquals("minimum happy", review.getOverallSentiment(), ":-)");
     }
 
@@ -145,7 +145,7 @@ public class ReviewSentimentServiceTest extends WithApplication {
         mockReviews.add("bad");
         mockReviews.add("bad");
 
-        review = rss.extractSentiment(mockReviews, -1);
+        review = rss.extractSentiment(mockReviews);
         assertEquals("under minimum happy", review.getOverallSentiment(), ":|");
     }
 
@@ -168,7 +168,7 @@ public class ReviewSentimentServiceTest extends WithApplication {
         mockReviews.add("fun");
         mockReviews.add("fun");
 
-        review = rss.extractSentiment(mockReviews, -1);
+        review = rss.extractSentiment(mockReviews);
         assertEquals("minimum sad", review.getOverallSentiment(), ":-(");
     }
 
@@ -191,7 +191,7 @@ public class ReviewSentimentServiceTest extends WithApplication {
         mockReviews.add("fun");
         mockReviews.add("fun");
 
-        review = rss.extractSentiment(mockReviews, -1);
+        review = rss.extractSentiment(mockReviews);
         assertEquals("under minimum sad", review.getOverallSentiment(), ":|");
     }
 
@@ -204,7 +204,7 @@ public class ReviewSentimentServiceTest extends WithApplication {
         mockReviews.add("bad fun"); // expected to be neutral
         mockReviews.add(" "); // expected to be neutral
 
-        review = rss.extractSentiment(mockReviews, -1);
+        review = rss.extractSentiment(mockReviews);
         // Assert that each individual is neutral
         assertEquals("all neutral review 1", review.getSentimentAtIndex(0), ":|");
         assertEquals("all neutral review 2", review.getSentimentAtIndex(1), ":|");
@@ -221,7 +221,7 @@ public class ReviewSentimentServiceTest extends WithApplication {
     public void singleNeutralReviewTest() {
         mockReviews.add("bad fun"); // expected to be neutral
 
-        review = rss.extractSentiment(mockReviews, -1);
+        review = rss.extractSentiment(mockReviews);
         // Assert that the single individual is neutral
         assertEquals("single neutral review", review.getSentimentAtIndex(0), ":|");
 
@@ -237,7 +237,7 @@ public class ReviewSentimentServiceTest extends WithApplication {
     public void singleHappyReviewTest() {
         mockReviews.add("fun"); // expected to be happy
 
-        review = rss.extractSentiment(mockReviews, -1);
+        review = rss.extractSentiment(mockReviews);
         // Assert that the single individual is happy
         assertEquals("single happy review", review.getSentimentAtIndex(0), ":-)");
 
@@ -253,7 +253,7 @@ public class ReviewSentimentServiceTest extends WithApplication {
     public void singleSadReviewTest() {
         mockReviews.add("bad"); // expected to be sad
 
-        review = rss.extractSentiment(mockReviews, -1);
+        review = rss.extractSentiment(mockReviews);
         // Assert that the single individual is sad
         assertEquals("single sad review", review.getSentimentAtIndex(0), ":-(");
 
@@ -269,7 +269,7 @@ public class ReviewSentimentServiceTest extends WithApplication {
     public void whiteSpaceReviewTest() {
         mockReviews.add("bad         fun      fun         bad"); // expected to be neutral
 
-        review = rss.extractSentiment(mockReviews, -1);
+        review = rss.extractSentiment(mockReviews);
         assertEquals("white space specific review", review.getSentimentAtIndex(0), ":|");
         assertEquals("white space overall", review.getOverallSentiment(), ":|");
     }
@@ -286,7 +286,7 @@ public class ReviewSentimentServiceTest extends WithApplication {
     public void spacialCharactersReviewTest() {
         mockReviews.add("bad $%^&fun      fun   $%^& 4564156489      bad"); // expected to be neutral
 
-        review = rss.extractSentiment(mockReviews, -1);
+        review = rss.extractSentiment(mockReviews);
         assertEquals("special chars specific review", review.getSentimentAtIndex(0), ":|");
         assertEquals("special chars preservation", review.getReviews().get(0),
                 "bad $%^&fun      fun   $%^& 4564156489      bad");
@@ -301,7 +301,7 @@ public class ReviewSentimentServiceTest extends WithApplication {
     public void negativeNegationsReviewTest() {
         mockReviews.add("not bad"); // expected to be positive
 
-        review = rss.extractSentiment(mockReviews, -1);
+        review = rss.extractSentiment(mockReviews);
         assertEquals("neg negation specific review", review.getSentimentAtIndex(0), ":-)");
         assertEquals("neg negation overall", review.getOverallSentiment(), ":-)");
     }
@@ -314,7 +314,7 @@ public class ReviewSentimentServiceTest extends WithApplication {
     public void positiveNegationsReviewTest() {
         mockReviews.add("not good"); // expected to be negative
 
-        review = rss.extractSentiment(mockReviews, -1);
+        review = rss.extractSentiment(mockReviews);
         assertEquals("pos negation specific review", review.getSentimentAtIndex(0), ":-(");
         assertEquals("pos negation overall", review.getOverallSentiment(), ":-(");
     }

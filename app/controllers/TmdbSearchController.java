@@ -1,8 +1,9 @@
 package controllers;
 
-
 import actors.UserParentActor;
 import actors.readability.ReadabilityActor;
+import actors.reviews.ReviewActor;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.inject.Inject;
 import models.dto.GlobalDiversityStats;
@@ -24,6 +25,8 @@ import services.features.readability.ReadabilityService;
 import services.features.reviews.ReviewSentimentService;
 import services.tmdb.TmdbSearchService;
 
+import java.lang.ModuleLayer.Controller;
+import java.net.http.WebSocket;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
@@ -56,6 +59,7 @@ public class TmdbSearchController extends Controller {
     private final ActorRef<UserParentActor.Command> userParentActor;
     // second delivery - individual
     private final ActorRef<ReadabilityActor.Command> readabilityActor;
+    private final ActorRef<ReviewActor.Command> reviewActor;
     private final Scheduler scheduler;
 
     @Inject
@@ -66,23 +70,23 @@ public class TmdbSearchController extends Controller {
             ReadabilityService readabilityService,
             GlobalDiversityService globalDiversityService,
             ReviewSentimentService reviewSentimentService,
-            ActorSystem classicActorSystem){
+            ActorSystem classicActorSystem) {
         this.tmdbSearchService = tmdbSearchService;
         this.fpService = fpService;
         this.personStatsService = personStatsService;
         this.readabilityService = readabilityService;
         this.globalDiversityService = globalDiversityService;
         this.reviewSentimentService = reviewSentimentService;
-        org.apache.pekko.actor.typed.ActorSystem<Void> typedSystem =
-                Adapter.toTyped(classicActorSystem);
+        org.apache.pekko.actor.typed.ActorSystem<Void> typedSystem = Adapter.toTyped(classicActorSystem);
         this.actorSystem = classicActorSystem;
         this.readabilityActor = typedSystem.systemActorOf(ReadabilityActor.create(readabilityService),
                 "readabilityActor", Props.empty());
+        this.reviewActor = typedSystem.systemActorOf(ReviewActor.create(reviewSentimentService),
+                "reviewActor", Props.empty());
         this.scheduler = typedSystem.scheduler();
         // GP part
-        this.userParentActor =
-                typedSystem.systemActorOf(UserParentActor.create(),
-                        "userParentActor", Props.empty());
+        this.userParentActor = typedSystem.systemActorOf(UserParentActor.create(),
+                "userParentActor", Props.empty());
     }
 
     /**
@@ -94,7 +98,8 @@ public class TmdbSearchController extends Controller {
         return WebSocket.Json.acceptOrResult(request -> {
             if (sameOriginCheck(request)) {
                 final CompletionStage<Flow<JsonNode, JsonNode, NotUsed>> future = wsFutureFlow(request);
-                final CompletionStage<Either<Result, Flow<JsonNode, JsonNode, ?>>> stage = future.thenApply(Either::Right);
+                final CompletionStage<Either<Result, Flow<JsonNode, JsonNode, ?>>> stage = future
+                        .thenApply(Either::Right);
                 return stage.exceptionally(this::logException);
             } else {
                 return forbiddenResult();
@@ -109,16 +114,13 @@ public class TmdbSearchController extends Controller {
      */
     private CompletionStage<Flow<JsonNode, JsonNode, NotUsed>> wsFutureFlow(Http.RequestHeader request) {
         String id = Long.toString(request.asScala().id());
-        Scheduler scheduler =
-                Adapter.toTyped((org.apache.pekko.actor.Scheduler) actorSystem.scheduler());
+        Scheduler scheduler = Adapter.toTyped((org.apache.pekko.actor.Scheduler) actorSystem.scheduler());
 
         return AskPattern.ask(
                 userParentActor,
-                (ActorRef<Flow<JsonNode, JsonNode, NotUsed>> replyTo) ->
-                        new UserParentActor.Create(id, replyTo),
+                (ActorRef<Flow<JsonNode, JsonNode, NotUsed>> replyTo) -> new UserParentActor.Create(id, replyTo),
                 timeout,
-                scheduler
-        );
+                scheduler);
     }
 
     /**
@@ -136,7 +138,8 @@ public class TmdbSearchController extends Controller {
     /**
      * @author Ali Maher
      *
-     * Helper method to log exceptions that occur during WebSocket flow creation.
+     *         Helper method to log exceptions that occur during WebSocket flow
+     *         creation.
      */
     private Either<Result, Flow<JsonNode, JsonNode, ?>> logException(Throwable throwable) {
         logger.error("Cannot create websocket", throwable);
@@ -145,8 +148,10 @@ public class TmdbSearchController extends Controller {
     }
 
     /**
-     * Checks that the WebSocket comes from the same origin.  This is necessary to protect
-     * against Cross-Site WebSocket Hijacking as WebSocket does not implement Same Origin Policy.
+     * Checks that the WebSocket comes from the same origin. This is necessary to
+     * protect
+     * against Cross-Site WebSocket Hijacking as WebSocket does not implement Same
+     * Origin Policy.
      * <p>
      *
      * @author Ali Maher
@@ -155,14 +160,15 @@ public class TmdbSearchController extends Controller {
     private boolean sameOriginCheck(Http.RequestHeader rh) {
         final Optional<String> origin = rh.header("Origin");
 
-        if (! origin.isPresent()) {
+        if (!origin.isPresent()) {
             logger.error("originCheck: rejecting request because no Origin header found");
             return false;
         } else if (originMatches(origin.get())) {
             logger.debug("originCheck: originValue = " + origin);
             return true;
         } else {
-            logger.error("originCheck: rejecting request because Origin header value " + origin + " is not in the same origin: "
+            logger.error("originCheck: rejecting request because Origin header value " + origin
+                    + " is not in the same origin: "
                     + String.join(", ", validOrigins));
             return false;
         }
@@ -174,6 +180,7 @@ public class TmdbSearchController extends Controller {
      * @author Ali Maher
      */
     private final List<String> validOrigins = Arrays.asList("localhost:9000");
+
     private boolean originMatches(String actualOrigin) {
         return validOrigins.stream().anyMatch(actualOrigin::contains);
     }
@@ -301,20 +308,15 @@ public class TmdbSearchController extends Controller {
      */
     public CompletionStage<Result> movieDetails(Integer id) {
         return tmdbSearchService.movieDetails(id)
-                .thenCompose(movie ->
-                    AskPattern.<ReadabilityActor.Command, ReadabilityActor.Result>ask(
-                            readabilityActor,
-                            replyTo -> new ReadabilityActor.Compute(movie.getOverview(), replyTo),
-                            Duration.ofSeconds(3),
-                            scheduler
-                        ).thenApply(readability ->
-                            ok(views.html.movieDetails.render(
-                                    movie,
-                                    readability.fleschScore,
-                                    readability.gradeLevel
-                            ))
-                        )
-                );
+                .thenCompose(movie -> AskPattern.<ReadabilityActor.Command, ReadabilityActor.Result>ask(
+                        readabilityActor,
+                        replyTo -> new ReadabilityActor.Compute(movie.getOverview(), replyTo),
+                        Duration.ofSeconds(3),
+                        scheduler).thenApply(
+                                readability -> ok(views.html.movieDetails.render(
+                                        movie,
+                                        readability.fleschScore,
+                                        readability.gradeLevel))));
     }
 
     /**
@@ -332,20 +334,27 @@ public class TmdbSearchController extends Controller {
      */
     public CompletionStage<Result> tvDetails(Integer id) {
         return tmdbSearchService.tvDetails(id)
-                .thenCompose(tvShow ->
-                        AskPattern.<ReadabilityActor.Command, ReadabilityActor.Result>ask(
-                                readabilityActor,
-                                replyTo -> new ReadabilityActor.Compute(tvShow.getOverview(), replyTo),
-                                Duration.ofSeconds(3),
-                                scheduler
-                            ).thenApply(readability ->
-                                ok(views.html.tvDetails.render(
+                .thenCompose(tvShow -> AskPattern.<ReadabilityActor.Command, ReadabilityActor.Result>ask(
+                        readabilityActor,
+                        replyTo -> new ReadabilityActor.Compute(tvShow.getOverview(), replyTo),
+                        Duration.ofSeconds(3),
+                        scheduler).thenApply(
+                                readability -> ok(views.html.tvDetails.render(
                                         tvShow,
                                         readability.fleschScore,
-                                        readability.gradeLevel
-                                ))
-                            )
-                );
+                                        readability.gradeLevel))));
+    }
+
+    public CompletionStage<Result> reviewDetailsWithActor(String kind, Integer id, String title) {
+        return reviewSentimentService.fetchReviewsAsRawList(kind, id)
+                .thenCompose(reviews -> AskPattern.<ReviewActor.Command, ReviewActor.Result>ask(
+                        reviewActor,
+                        replyTo -> new ReviewActor.Compute(reviews, replyTo),
+                        Duration.ofSeconds(10), scheduler).thenApply(
+                                processedReviews -> ok(views.html.reviews.render(
+                                        title,
+                                        processedReviews))));
+
     }
 
     /**
