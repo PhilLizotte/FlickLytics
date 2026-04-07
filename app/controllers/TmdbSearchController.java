@@ -355,7 +355,7 @@ public class TmdbSearchController extends Controller {
      * @return Status of the request
      */
     public CompletionStage<Result> reviewDetailsWithActor(String kind, Integer id, String title) {
-        return reviewSentimentService.fetchReviewsAsRawList(kind, id)
+        return tmdbSearchService.fetchReviewsAsRawList(kind, id)
                 .thenCompose(reviews -> AskPattern.<ReviewActor.Command, ReviewActor.Result>ask(
                         reviewActor,
                         replyTo -> new ReviewActor.Compute(reviews, replyTo),

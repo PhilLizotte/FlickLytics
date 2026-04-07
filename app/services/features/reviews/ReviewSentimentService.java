@@ -18,13 +18,14 @@ import models.domain.Review;
 import services.tmdb.TmdbConfig;
 
 /**
+ * ReviewSentiment individual part
+ * 
  * @author Craig Kogan (40175780)
- *         ReviewSentiment individual part
  */
 public class ReviewSentimentService {
 
-    private final WSClient ws;
-    private final TmdbConfig tmdbConfig;
+    // private final WSClient ws;
+    // private final TmdbConfig tmdbConfig;
 
     // list of 'positive/happy' keywords
     private static final Set<String> posList = Set.of(
@@ -60,62 +61,60 @@ public class ReviewSentimentService {
     /**
      * Constructor
      * 
-     * @param ws         tmdb API request endpoint
-     * @param tmdbConfig Configuration parameters
      */
     @Inject
-    public ReviewSentimentService(WSClient ws, TmdbConfig tmdbConfig) {
-        this.ws = ws;
-        this.tmdbConfig = tmdbConfig;
+    public ReviewSentimentService() {
     }
 
-    public CompletionStage<List<String>> fetchReviewsAsRawList(String kind, int id) {
-        String url = tmdbConfig.getBaseUrl() + "/" + kind + "/" + id + "/reviews";
-        WSRequest request1 = ws.url(url)
-                .addQueryParameter("api_key", tmdbConfig.getApiKey())
-                .addQueryParameter("language", "en-us")
-                .addQueryParameter("page", "1");
+    // public CompletionStage<List<String>> fetchReviewsAsRawList(String kind, int
+    // id) {
+    // String url = tmdbConfig.getBaseUrl() + "/" + kind + "/" + id + "/reviews";
+    // WSRequest request1 = ws.url(url)
+    // .addQueryParameter("api_key", tmdbConfig.getApiKey())
+    // .addQueryParameter("language", "en-us")
+    // .addQueryParameter("page", "1");
 
-        WSRequest request2 = ws.url(url)
-                .addQueryParameter("api_key", tmdbConfig.getApiKey())
-                .addQueryParameter("language", "en-us")
-                .addQueryParameter("page", "2");
+    // WSRequest request2 = ws.url(url)
+    // .addQueryParameter("api_key", tmdbConfig.getApiKey())
+    // .addQueryParameter("language", "en-us")
+    // .addQueryParameter("page", "2");
 
-        WSRequest request3 = ws.url(url)
-                .addQueryParameter("api_key", tmdbConfig.getApiKey())
-                .addQueryParameter("language", "en-us")
-                .addQueryParameter("page", "3");
+    // WSRequest request3 = ws.url(url)
+    // .addQueryParameter("api_key", tmdbConfig.getApiKey())
+    // .addQueryParameter("language", "en-us")
+    // .addQueryParameter("page", "3");
 
-        return request1.get()
-                .thenCompose(resp1 -> request2.get().thenCompose(resp2 -> request3.get().thenApply(resp3 -> {
-                    List<String> list = new ArrayList<>();
-                    JsonNode res1 = resp1.asJson().get("results");
-                    JsonNode res2 = resp2.asJson().get("results");
-                    JsonNode res3 = resp3.asJson().get("results");
+    // return request1.get()
+    // .thenCompose(resp1 -> request2.get().thenCompose(resp2 ->
+    // request3.get().thenApply(resp3 -> {
+    // List<String> list = new ArrayList<>();
+    // JsonNode res1 = resp1.asJson().get("results");
+    // JsonNode res2 = resp2.asJson().get("results");
+    // JsonNode res3 = resp3.asJson().get("results");
 
-                    if (res1 != null && res1.isArray()) {
-                        for (JsonNode r : res1) {
-                            list.add(r.get("content").asText());
-                        }
-                    }
+    // if (res1 != null && res1.isArray()) {
+    // for (JsonNode r : res1) {
+    // list.add(r.get("content").asText());
+    // }
+    // }
 
-                    if (res2 != null && res2.isArray()) {
-                        for (JsonNode r : res2) {
-                            list.add(r.get("content").asText());
-                        }
-                    }
+    // if (res2 != null && res2.isArray()) {
+    // for (JsonNode r : res2) {
+    // list.add(r.get("content").asText());
+    // }
+    // }
 
-                    if (res3 != null && res3.isArray()) {
-                        for (JsonNode r : res3) {
-                            list.add(r.get("content").asText());
-                            if (list.size() >= 50) {
-                                break;
-                            }
-                        }
-                    }
-                    return list;
-                })));
-    }
+    // if (res3 != null && res3.isArray()) {
+    // for (JsonNode r : res3) {
+    // list.add(r.get("content").asText());
+    // if (list.size() >= 50) {
+    // break;
+    // }
+    // }
+    // }
+    // return list;
+    // })));
+    // }
 
     /**
      * @author Craig Kogan (40175780)
@@ -151,33 +150,6 @@ public class ReviewSentimentService {
 
         // If there are no reviews, skip the parsing. The sentiment is neutral.
         if (!reviewsList.isEmpty()) {
-            // INFO:: this stream is the same as the FOR loop below, except that negations
-            // are not calculated.
-            // List<String> sents = reviewsList.stream()
-            // .map(r -> {
-            // // List<String> revs =
-            // Arrays.asList(r.toLowerCase().replaceAll("[^a-zé\\-\\s]", "").split(" "));
-
-            // int points = Arrays.asList(r.toLowerCase().replaceAll("[^a-zé\\-\\s]",
-            // "").split(" ")).stream()
-            // .mapToInt(w -> {
-            // // TODO:: somehow figure out negation words?
-            // if (posList.contains(w))
-            // return 1;
-            // else if (negList.contains(w))
-            // return -1;
-            // return 0;
-            // })
-            // .sum();
-
-            // if (points > 0)
-            // return ":-)";
-            // else if (points < 0)
-            // return ":-(";
-            // return ":|";
-
-            // })
-            // .collect(Collectors.toList());
 
             for (String review : reviewsList) {
                 score = 0;
