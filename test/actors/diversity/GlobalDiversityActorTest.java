@@ -59,6 +59,89 @@ public class GlobalDiversityActorTest {
         verify(service, times(1)).compute("movie", 123);
     }
 
+    /**
+     * Test that if the category is null, the actor replies with an error and does not call the service.
+     *
+     * @author Ali Maher
+     *
+     **/
+    @Test
+    public void compute_nullCategory_repliesError_withoutCallingService() {
+        GlobalDiversityService service = mock(GlobalDiversityService.class);
+
+        var actor = testKit.spawn(GlobalDiversityActor.create(service));
+        TestProbe<GlobalDiversityActor.Response> probe = testKit.createTestProbe();
+
+        actor.tell(new GlobalDiversityActor.Compute(null, 1, probe.getRef()));
+
+        GlobalDiversityActor.Response reply = probe.receiveMessage();
+        assertTrue(reply instanceof GlobalDiversityActor.Error);
+
+        GlobalDiversityActor.Error err = (GlobalDiversityActor.Error) reply;
+        assertEquals("Missing category", err.message);
+
+        verify(service, never()).compute(anyString(), anyInt());
+    }
+
+    /**
+     * Test that if the category is "tv", the actor calls the service and replies with Ok.
+     *
+     * @author Ali Maher
+     *
+     **/
+    @Test
+    public void compute_tvCategory_repliesOk() {
+        GlobalDiversityService service = mock(GlobalDiversityService.class);
+
+        GlobalDiversityStats stats = new GlobalDiversityStats(
+                "tv", 456, 12, 40, 0.3, 0.81
+        );
+
+        when(service.compute("tv", 456))
+                .thenReturn(CompletableFuture.completedFuture(stats));
+
+        var actor = testKit.spawn(GlobalDiversityActor.create(service));
+        TestProbe<GlobalDiversityActor.Response> probe = testKit.createTestProbe();
+
+        actor.tell(new GlobalDiversityActor.Compute("tv", 456, probe.getRef()));
+
+        GlobalDiversityActor.Response reply = probe.receiveMessage();
+        assertTrue(reply instanceof GlobalDiversityActor.Ok);
+
+        GlobalDiversityActor.Ok ok = (GlobalDiversityActor.Ok) reply;
+        assertEquals("tv", ok.stats.category);
+        assertEquals(456, ok.stats.id);
+
+        verify(service, times(1)).compute("tv", 456);
+    }
+
+    /**
+     * Test that if the category is invalid, the actor replies with an error and does not call the service.
+     *
+     * @author Ali Maher
+     *
+     **/
+    @Test
+    public void compute_nullStats_repliesError() {
+        GlobalDiversityService service = mock(GlobalDiversityService.class);
+
+        when(service.compute("movie", 777))
+                .thenReturn(CompletableFuture.completedFuture(null));
+
+        var actor = testKit.spawn(GlobalDiversityActor.create(service));
+        TestProbe<GlobalDiversityActor.Response> probe = testKit.createTestProbe();
+
+        actor.tell(new GlobalDiversityActor.Compute("movie", 777, probe.getRef()));
+
+        GlobalDiversityActor.Response reply = probe.receiveMessage();
+        assertTrue(reply instanceof GlobalDiversityActor.Error);
+
+        GlobalDiversityActor.Error err = (GlobalDiversityActor.Error) reply;
+        assertEquals("Global diversity computation failed", err.message);
+
+        verify(service, times(1)).compute("movie", 777);
+    }
+
     @Test
     public void compute_invalidCategory_repliesError_withoutCallingService() {
         GlobalDiversityService service = mock(GlobalDiversityService.class);
