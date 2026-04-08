@@ -242,7 +242,16 @@ public class TmdbSearchController extends Controller {
     }
 
     /**
+     * An actor-driven action that renders an HTML page displaying financial
+     * information for a movie based on its <code>id</code>. This feature is only
+     * intended for movies, and does not work with shows or people.
      * 
+     * @author Philippe Lizotte
+     * 
+     * @param id The id of the movie for which the financial information is being
+     *           returned.
+     * @return The status of the request, indicating if it was executed
+     *         successfully, or if not, the error code.
      */
     public CompletionStage<Result> finances(int id) {
         // TO-DO: Call the fpService function.
@@ -257,7 +266,6 @@ public class TmdbSearchController extends Controller {
                                         fpInfo.netProfit,
                                         fpInfo.roi,
                                         fpInfo.financialStatus))));
-
     }
 
     /**
