@@ -3,8 +3,29 @@ package controllers;
 import actors.UserParentActor;
 import actors.readability.ReadabilityActor;
 import actors.reviews.ReviewActor;
+import actors.fpActors.FinancialPerformanceActor;
+import actors.fpActors.GetFPInfo;
+import actors.fpActors.FpCommand;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.inject.Inject;
+import org.apache.pekko.actor.ActorSelection;
+import org.apache.pekko.actor.typed.ActorRef;
+import org.apache.pekko.actor.typed.Props;
+import static org.apache.pekko.pattern.Patterns.ask;
+import org.apache.pekko.actor.ActorSystem;
+
+import org.apache.pekko.actor.typed.Scheduler;
+import org.apache.pekko.actor.typed.javadsl.Adapter;
+import org.apache.pekko.actor.typed.javadsl.AskPattern;
+import play.mvc.Controller;
+import play.mvc.Result;
+
+import play.mvc.*;
+import javax.inject.*;
+
+import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import models.dto.GlobalDiversityStats;
 import org.apache.pekko.NotUsed;
 import org.apache.pekko.actor.ActorSystem;
@@ -39,8 +60,7 @@ import java.util.concurrent.CompletionStage;
  * Delegates data fetching and computations to the corresponding services.
  * </p>
  *
- * @author all_team_members
- * 
+ *
  */
 public class TmdbSearchController extends Controller {
     private final TmdbSearchService tmdbSearchService;
@@ -58,6 +78,8 @@ public class TmdbSearchController extends Controller {
     private final ActorRef<ReadabilityActor.Command> readabilityActor;
     private final ActorRef<ReviewActor.Command> reviewActor;
     private final Scheduler scheduler;
+    
+    private final ActorRef<actors.fpActors.FpCommand> fpActor;
 
     @Inject
     public TmdbSearchController(
@@ -81,6 +103,11 @@ public class TmdbSearchController extends Controller {
 
         this.reviewActor = typedSystem.systemActorOf(ReviewActor.create(reviewSentimentService),
                 "reviewActor", Props.empty());
+
+        this.fpActor = typedSystem.systemActorOf(
+                FinancialPerformanceActor.create(),
+                "fpActor", Props.empty()
+        );
 
         this.scheduler = typedSystem.scheduler();
         // GP part
@@ -233,7 +260,7 @@ public class TmdbSearchController extends Controller {
     }
 
     /**
-     * An action that renders an HTML page displaying financial information for a
+     * An actor-driven action that renders an HTML page displaying financial information for a
      * movie based on its <code>id</code>. This feature is only intended for movies,
      * and does not work with shows or people.
      * 
@@ -245,6 +272,29 @@ public class TmdbSearchController extends Controller {
      *         successfully, or if not, the error code.
      */
     public CompletionStage<Result> finances(int id) {
+        // TO-DO: Call the fpService function.
+        // Incorporate its output to the actor nonsense.
+        return fpService.getMovieFinances(id)
+                .thenCompose(info ->
+                        AskPattern.<FpCommand, actors.fpActors.FpResult>ask(
+                                fpActor,
+                                replyTo -> new GetFPInfo(info, replyTo),
+                                Duration.ofSeconds(3),
+                                scheduler
+                        ).thenApply(fpInfo ->
+                                ok(views.html.financialPerformance.render(
+                                                fpInfo.title,
+                                                fpInfo.netProfit,
+                                                fpInfo.roi,
+                                                fpInfo.financialStatus
+                                        ) 
+                                )
+                        )
+                );
+                
+
+        /*
+        // TO-DO: create actor
         return fpService.getMovieFinances(id)
                 .handle((json, ex) -> {
                     if (ex != null) {
@@ -258,6 +308,7 @@ public class TmdbSearchController extends Controller {
 
                     return ok(views.html.financialPerformance.render(title, netProfit, roiPercent, financialRating));
                 });
+         */
     }
 
     /**
@@ -345,7 +396,7 @@ public class TmdbSearchController extends Controller {
     }
 
     /**
-     * Renders the review details page via actor
+     * Renders the review details page
      * 
      * @author Craig Kogan
      * 
@@ -365,5 +416,4 @@ public class TmdbSearchController extends Controller {
                                         processedReviews.review))));
 
     }
-
 }

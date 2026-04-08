@@ -1,6 +1,8 @@
 package controllers;
 
 import actors.UserParentActor;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import models.domain.*;
 import models.dto.PersonKnownForItemDTO;
 import models.dto.PersonKnownForPageDTO;
@@ -36,6 +38,20 @@ import static org.junit.Assert.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static play.inject.Bindings.bind;
+import models.domain.Genre;
+import models.domain.Movie;
+import models.domain.ProductionCompany;
+import models.domain.SpokenLanguage;
+import models.domain.TVShow;
+import models.dto.PersonKnownForItemDTO;
+import models.dto.PersonKnownForPageDTO;
+import models.dto.PersonKnownForStatsDTO;
+import org.mockito.Mockito;
+
+import org.apache.pekko.actor.ActorSystem;
+import org.apache.pekko.actor.typed.*;
+
+import static org.junit.Assert.assertEquals;
 import static play.mvc.Http.Status.BAD_REQUEST;
 import static play.mvc.Http.Status.OK;
 import static play.test.Helpers.*;
@@ -87,8 +103,15 @@ public class TmdbSearchControllerTest extends WithApplication {
                                 .thenReturn(CompletableFuture.completedFuture(dummyMovie));
                 Mockito.when(tmdbSearchService.tvDetails(Mockito.anyInt()))
                                 .thenReturn(CompletableFuture.completedFuture(dummyTvShow));
+
+                ObjectMapper mapper = new ObjectMapper();
+                ObjectNode mockMovie = mapper.createObjectNode();
+                mockMovie.put("id", 42069);
+                mockMovie.put("title", "Sharknado 35");
+                mockMovie.put("budget", 1000);
+                mockMovie.put("revenue", 150000);
                 Mockito.when(financialPerformanceService.getMovieFinances(Mockito.anyInt()))
-                                .thenReturn(CompletableFuture.completedFuture(play.libs.Json.newObject()));
+                                .thenReturn(CompletableFuture.completedFuture(mockMovie));
 
                 Mockito.when(tmdbSearchService.fetchReviewsAsRawList(Mockito.anyString(), Mockito.anyInt()))
                                 .thenReturn(CompletableFuture
@@ -242,11 +265,8 @@ public class TmdbSearchControllerTest extends WithApplication {
 
         @Test
         public void testFinances() {
-                Http.RequestBuilder request = new Http.RequestBuilder()
-                                .method(GET)
-                                .uri("/finances/11");
-
-                Result result = route(app, request);
+                Result result = route(app,
+                        fakeRequest(GET, "/finances/11"));
                 assertEquals(OK, result.status());
         }
 
