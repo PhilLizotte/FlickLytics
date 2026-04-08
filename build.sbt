@@ -5,6 +5,7 @@ version := "1.0-SNAPSHOT"
 lazy val root = (project in file(".")).enablePlugins(PlayJava)
 
 scalaVersion := "3.8.1"
+javacOptions ++= Seq("--release", "21")
 
 libraryDependencies += guice
 libraryDependencies += javaWs

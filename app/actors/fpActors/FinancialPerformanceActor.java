@@ -3,8 +3,13 @@ package actors.fpActors;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.pekko.actor.typed.Behavior;
 import org.apache.pekko.actor.typed.javadsl.*;
-import services.features.financial.FinancialPerformanceService;
 
+/**
+ * Actor that handles financial performance operation. It receives raw
+ * movie data through {@link GetFPInfo}, then populates and sends a
+ * {@link FpResult} behavior as a response. It contains the movie's title,
+ * net profit, roi percentage and its financial status.
+ */
 public class FinancialPerformanceActor extends AbstractBehavior<FpCommand> {
 
     /**
@@ -41,7 +46,7 @@ public class FinancialPerformanceActor extends AbstractBehavior<FpCommand> {
      * Calculates a movie's net profit, ROI percent and financial rating based off
      * of its budget and revenue.
      * 
-     * @param command behavior object containing movie json.
+     * @param command behavior object containing movie JSON.
      * @return Result behavior, containing all financial information of the movie.
      */
     private Behavior<FpCommand> onGetFPInfo(FpCommand command) {
