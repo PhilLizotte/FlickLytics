@@ -34,13 +34,37 @@ public class FinancialPerformanceActorTest {
 
         var readabilityActor = testKit.spawn(FinancialPerformanceActor.create());
         readabilityActor.tell(new GetFPInfo(mockMovie, probe.getRef()));
-        FpResult result = probe.receiveMessage();
+        FpResult result1 = probe.receiveMessage();
 
+        mockMovie.put("revenue", 4000);
+        readabilityActor.tell(new GetFPInfo(mockMovie, probe.getRef()));
+        FpResult result2 = probe.receiveMessage();
+
+        mockMovie.put("revenue", 2000);
+        readabilityActor.tell(new GetFPInfo(mockMovie, probe.getRef()));
+        FpResult result3 = probe.receiveMessage();
+
+        mockMovie.put("revenue", 500);
+        readabilityActor.tell(new GetFPInfo(mockMovie, probe.getRef()));
+        FpResult result4 = probe.receiveMessage();
+        
         // assertions
-        assertEquals("Sharknado 35", result.title);
-        assertEquals("149000", result.netProfit);
-        assertEquals("14900.00", result.roi);
-        assertEquals("Blockbuster Success", result.financialStatus);
+        assertEquals("Sharknado 35", result1.title);
+        assertEquals("149000", result1.netProfit);
+        assertEquals("14900.00", result1.roi);
+        assertEquals("Blockbuster Success", result1.financialStatus);
+        
+        assertEquals("3000", result2.netProfit);
+        assertEquals("300.00", result2.roi);
+        assertEquals("High Return", result2.financialStatus);
+
+        assertEquals("1000", result3.netProfit);
+        assertEquals("100.00", result3.roi);
+        assertEquals("Profitable", result3.financialStatus);
+
+        assertEquals("-500", result4.netProfit);
+        assertEquals("-50.00", result4.roi);
+        assertEquals("Financial Loss", result4.financialStatus);
     }
 
     @Test
