@@ -1,5 +1,6 @@
 package controllers;
 
+import actors.diversity.GlobalDiversityActor;
 import actors.UserParentActor;
 import actors.readability.ReadabilityActor;
 import actors.reviews.ReviewActor;
@@ -78,8 +79,13 @@ public class TmdbSearchController extends Controller {
     private final ActorRef<ReadabilityActor.Command> readabilityActor;
     private final ActorRef<ReviewActor.Command> reviewActor;
     private final Scheduler scheduler;
-    
+
     private final ActorRef<actors.fpActors.FpCommand> fpActor;
+
+    /**
+     * Actor used to compute Global Diversity asynchronously.
+     */
+    private final ActorRef<GlobalDiversityActor.Command> globalDiversityActor;
 
     @Inject
     public TmdbSearchController(
@@ -107,6 +113,12 @@ public class TmdbSearchController extends Controller {
         this.fpActor = typedSystem.systemActorOf(
                 FinancialPerformanceActor.create(),
                 "fpActor", Props.empty()
+        );
+
+        this.globalDiversityActor = typedSystem.systemActorOf(
+                GlobalDiversityActor.create(globalDiversityService),
+                "globalDiversityActor",
+                Props.empty()
         );
 
         this.scheduler = typedSystem.scheduler();
@@ -223,9 +235,9 @@ public class TmdbSearchController extends Controller {
 
     /**
      * @author Aram Zand
-     * 
+     *
      *         Renders the known for page
-     * 
+     *
      * @param id id of person
      * @return The status of the request
      */
@@ -263,7 +275,7 @@ public class TmdbSearchController extends Controller {
      * An actor-driven action that renders an HTML page displaying financial information for a
      * movie based on its <code>id</code>. This feature is only intended for movies,
      * and does not work with shows or people.
-     * 
+     *
      * @author Philippe Lizotte
      *
      * @param id The id of the movie for which the financial information is being
@@ -287,11 +299,11 @@ public class TmdbSearchController extends Controller {
                                                 fpInfo.netProfit,
                                                 fpInfo.roi,
                                                 fpInfo.financialStatus
-                                        ) 
+                                        )
                                 )
                         )
                 );
-                
+
 
         /*
         // TO-DO: create actor
@@ -313,7 +325,7 @@ public class TmdbSearchController extends Controller {
 
     /**
      * Searches for movie by id
-     * 
+     *
      * @author Philippe Lizotte
      * @param id The id of the movie
      * @return Status of the request
@@ -325,10 +337,10 @@ public class TmdbSearchController extends Controller {
     }
 
     /**
-     * Renders the global diversity page
-     * 
+     * Renders the global diversity page.
+     *
      * @author Chama Amri Toudrhi
-     * 
+     *
      * @param category movie or tv
      * @param id       id of the movie or tv show
      * @return Status of the request
@@ -341,15 +353,25 @@ public class TmdbSearchController extends Controller {
             return CompletableFuture.completedFuture(badRequest("Missing id"));
         }
 
-        return globalDiversityService.compute(category, id)
-                .thenApply((GlobalDiversityStats stats) -> ok(views.html.globalDiversity.render(stats)));
+        return AskPattern.<GlobalDiversityActor.Command, GlobalDiversityActor.Response>ask(
+                globalDiversityActor,
+                replyTo -> new GlobalDiversityActor.Compute(category, id, replyTo),
+                Duration.ofSeconds(3),
+                scheduler
+        ).thenApply(reply -> {
+            if (reply instanceof GlobalDiversityActor.Ok okReply) {
+                return ok(views.html.globalDiversity.render(okReply.stats));
+            }
+            GlobalDiversityActor.Error errReply = (GlobalDiversityActor.Error) reply;
+            return badRequest(errReply.message);
+        });
     }
 
     /**
      * Handles the request to show movie details.
      * Fetches the movie from TMDb, calculates readability scores,
      * and renders the movieDetails view.
-     * 
+     *
      * @author Seyed Ali Mohammad Maher
      *
      * @param id the unique identifier of the movie
@@ -363,21 +385,21 @@ public class TmdbSearchController extends Controller {
                         replyTo -> new ReadabilityActor.Compute(movie.getOverview(), replyTo),
                         Duration.ofSeconds(3),
                         scheduler).thenApply(
-                                readability -> ok(views.html.movieDetails.render(
-                                        movie,
-                                        readability.fleschScore,
-                                        readability.gradeLevel))));
+                        readability -> ok(views.html.movieDetails.render(
+                                movie,
+                                readability.fleschScore,
+                                readability.gradeLevel))));
     }
 
     /**
-     * 
-     * 
+     *
+     *
      * Handles the request to show TV show details.
      * Fetches the TV show from TMDb, calculates readability scores,
      * and renders the tvDetails view.
-     * 
+     *
      * @author Seyed Ali Mohammad Maher
-     * 
+     *
      * @param id the unique identifier of the TV show
      * @return a CompletionStage that will complete with an HTTP Result rendering
      *         the tvDetails page
@@ -389,17 +411,17 @@ public class TmdbSearchController extends Controller {
                         replyTo -> new ReadabilityActor.Compute(tvShow.getOverview(), replyTo),
                         Duration.ofSeconds(3),
                         scheduler).thenApply(
-                                readability -> ok(views.html.tvDetails.render(
-                                        tvShow,
-                                        readability.fleschScore,
-                                        readability.gradeLevel))));
+                        readability -> ok(views.html.tvDetails.render(
+                                tvShow,
+                                readability.fleschScore,
+                                readability.gradeLevel))));
     }
 
     /**
      * Renders the review details page
-     * 
+     *
      * @author Craig Kogan
-     * 
+     *
      * @param kind  movie or tv
      * @param id    id of movie or tv show
      * @param title title of movie/tv show
@@ -411,9 +433,9 @@ public class TmdbSearchController extends Controller {
                         reviewActor,
                         replyTo -> new ReviewActor.Compute(reviews, replyTo),
                         Duration.ofSeconds(10), scheduler).thenApply(
-                                processedReviews -> ok(views.html.reviews.render(
-                                        title,
-                                        processedReviews.review))));
+                        processedReviews -> ok(views.html.reviews.render(
+                                title,
+                                processedReviews.review))));
 
     }
 }
