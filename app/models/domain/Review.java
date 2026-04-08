@@ -8,7 +8,7 @@ import java.util.List;
  *         page.
  */
 public class Review {
-    private final int id;
+    // private final int id;
     private final int happy;
     private final int sad;
     private final int neutral;
@@ -29,9 +29,9 @@ public class Review {
      * @param reviews          list of all the reviews
      * @param sentiments       list of all the sentiments (one sentiment per review)
      */
-    public Review(int id, int happy, int sad, int neutral, String overallSentiment, List<String> reviews,
+    public Review(int happy, int sad, int neutral, String overallSentiment, List<String> reviews,
             List<String> sentiments) {
-        this.id = id;
+        // this.id = id;
         this.happy = happy;
         this.sad = sad;
         this.neutral = neutral;
@@ -41,12 +41,12 @@ public class Review {
         this.sentiments = sentiments;
     }
 
-    /**
-     * @return movie/show id
-     */
-    public int getId() {
-        return id;
-    }
+    // /**
+    // * @return movie/show id
+    // */
+    // public int getId() {
+    // return id;
+    // }
 
     /**
      * @return number of happy reviews

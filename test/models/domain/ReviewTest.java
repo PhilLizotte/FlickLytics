@@ -21,10 +21,10 @@ public class ReviewTest {
 
         List<String> reviews = Arrays.asList("fun", "fun", "fun", "fun", "fun", "fun", "fun", "bad", "bad", "");
         List<String> sentiments = Arrays.asList(":-)", ":-)", ":-)", ":-)", ":-)", ":-)", ":-)", ":-(", ":-(", ":|");
-        Review review = new Review(1, 7, 2, 1, ":-)",
+        Review review = new Review(7, 2, 1, ":-)",
                 reviews, sentiments);
 
-        assertEquals("getid", review.getId(), 1);
+        // assertEquals("getid", review.getId(), 1);
         assertEquals("getHappy", review.getHappy(), 7);
         assertEquals("getSad", review.getSad(), 2);
         assertEquals("getNeutral", review.getNeutral(), 1);

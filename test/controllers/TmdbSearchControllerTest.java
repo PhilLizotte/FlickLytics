@@ -25,6 +25,7 @@ import services.tmdb.TmdbSearchService;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -89,6 +90,10 @@ public class TmdbSearchControllerTest extends WithApplication {
                 Mockito.when(financialPerformanceService.getMovieFinances(Mockito.anyInt()))
                                 .thenReturn(CompletableFuture.completedFuture(play.libs.Json.newObject()));
 
+                Mockito.when(tmdbSearchService.fetchReviewsAsRawList(Mockito.anyString(), Mockito.anyInt()))
+                                .thenReturn(CompletableFuture
+                                                .completedFuture(Arrays.asList("Hiya there! I'm not null!")));
+
                 PersonKnownForPageDTO dummyKnownForPage = new PersonKnownForPageDTO(
                                 java.util.List.of(new PersonKnownForItemDTO(1, "movie", "Test", "2000-01-01", 1.0, 1.0,
                                                 1, "https://example.com")),
@@ -112,14 +117,14 @@ public class TmdbSearchControllerTest extends WithApplication {
                                                 bind(ReadabilityService.class).toInstance(readabilityService))
                                 .build();
         }
-        
+
         // DELIVERY 2 >>>
         @Test
         public void testWsFutureFlowExecuted() throws Exception {
                 Http.RequestHeader request = mock(Http.RequestHeader.class);
 
                 when(request.header("Origin"))
-                        .thenReturn(Optional.of("http://localhost:9000"));
+                                .thenReturn(Optional.of("http://localhost:9000"));
 
                 // mock scala request id
                 play.api.mvc.RequestHeader scalaRequest = mock(play.api.mvc.RequestHeader.class);
@@ -135,14 +140,14 @@ public class TmdbSearchControllerTest extends WithApplication {
                 WebSocket ws = controller.ws();
                 assertNotNull(ws);
         }
-        
+
         @Test
         public void testSameOriginCheck_validOrigin() throws Exception {
                 Http.RequestHeader request = mock(Http.RequestHeader.class);
                 when(request.header("Origin")).thenReturn(Optional.of("http://localhost:9000"));
 
                 Method method = TmdbSearchController.class
-                        .getDeclaredMethod("sameOriginCheck", Http.RequestHeader.class);
+                                .getDeclaredMethod("sameOriginCheck", Http.RequestHeader.class);
                 method.setAccessible(true);
 
                 boolean result = (boolean) method.invoke(controller, request);
@@ -156,7 +161,7 @@ public class TmdbSearchControllerTest extends WithApplication {
                 when(request.header("Origin")).thenReturn(Optional.empty());
 
                 Method method = TmdbSearchController.class
-                        .getDeclaredMethod("sameOriginCheck", Http.RequestHeader.class);
+                                .getDeclaredMethod("sameOriginCheck", Http.RequestHeader.class);
                 method.setAccessible(true);
 
                 boolean result = (boolean) method.invoke(controller, request);
@@ -170,7 +175,7 @@ public class TmdbSearchControllerTest extends WithApplication {
                 when(request.header("Origin")).thenReturn(Optional.of("http://evil.com"));
 
                 Method method = TmdbSearchController.class
-                        .getDeclaredMethod("sameOriginCheck", Http.RequestHeader.class);
+                                .getDeclaredMethod("sameOriginCheck", Http.RequestHeader.class);
                 method.setAccessible(true);
 
                 boolean result = (boolean) method.invoke(controller, request);
@@ -181,7 +186,7 @@ public class TmdbSearchControllerTest extends WithApplication {
         @Test
         public void testOriginMatches() throws Exception {
                 Method method = TmdbSearchController.class
-                        .getDeclaredMethod("originMatches", String.class);
+                                .getDeclaredMethod("originMatches", String.class);
                 method.setAccessible(true);
 
                 boolean valid = (boolean) method.invoke(controller, "http://localhost:9000");
@@ -194,11 +199,10 @@ public class TmdbSearchControllerTest extends WithApplication {
         @Test
         public void testForbiddenResult() throws Exception {
                 Method method = TmdbSearchController.class
-                        .getDeclaredMethod("forbiddenResult");
+                                .getDeclaredMethod("forbiddenResult");
                 method.setAccessible(true);
 
-                CompletionStage<?> stage =
-                        (CompletionStage<?>) method.invoke(controller);
+                CompletionStage<?> stage = (CompletionStage<?>) method.invoke(controller);
 
                 Object result = stage.toCompletableFuture().get();
 
@@ -208,14 +212,14 @@ public class TmdbSearchControllerTest extends WithApplication {
         @Test
         public void testLogException() throws Exception {
                 Method method = TmdbSearchController.class
-                        .getDeclaredMethod("logException", Throwable.class);
+                                .getDeclaredMethod("logException", Throwable.class);
                 method.setAccessible(true);
 
                 Object result = method.invoke(controller, new RuntimeException("boom"));
 
                 assertNotNull(result);
         }
-        
+
         @Test
         public void testWs_forbiddenPath() {
                 Http.RequestHeader request = mock(Http.RequestHeader.class);
@@ -308,11 +312,15 @@ public class TmdbSearchControllerTest extends WithApplication {
 
         @Test
         public void testReview() {
-                Http.RequestBuilder request = new Http.RequestBuilder()
-                                .method(GET)
-                                .uri("/reviews/movie/1/fake");
+                // Http.RequestBuilder request = new Http.RequestBuilder()
+                // .method(GET)
+                // .uri("/reviews/movie/1/fake");
 
-                Result result = route(app, request);
+                // Result result = route(app, request);
+                // assertEquals(OK, result.status());
+
+                Result result = route(app,
+                                fakeRequest(GET, "/reviews/movie/1/fake"));
                 assertEquals(OK, result.status());
         }
 
