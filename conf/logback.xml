@@ -50,4 +50,7 @@
     <appender-ref ref="ASYNCSTDOUT"/>
   </root>
 
+<!--  <root level="INFO"></root>-->
+<!--  <root level="DEBUG"></root>-->
+
 </configuration>

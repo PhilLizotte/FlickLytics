@@ -2,12 +2,21 @@ package controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.junit.Test;
+import actors.UserParentActor;
+import models.domain.*;
+import models.dto.PersonKnownForItemDTO;
+import models.dto.PersonKnownForPageDTO;
+import models.dto.PersonKnownForStatsDTO;
+import org.apache.pekko.actor.ActorSystem;
+import org.apache.pekko.actor.typed.ActorRef;
 import org.junit.Before;
+import org.junit.Test;
+import org.mockito.Mockito;
 import play.Application;
 import play.inject.guice.GuiceApplicationBuilder;
 import play.mvc.Http;
 import play.mvc.Result;
+import play.mvc.WebSocket;
 import play.test.WithApplication;
 import services.features.diversity.GlobalDiversityService;
 import services.features.financial.FinancialPerformanceService;
@@ -15,31 +24,25 @@ import services.features.personstats.PersonStatsService;
 import services.features.readability.ReadabilityService;
 import services.tmdb.TmdbSearchService;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
-import models.domain.Genre;
-import models.domain.Movie;
-import models.domain.ProductionCompany;
-import models.domain.SpokenLanguage;
-import models.domain.TVShow;
-import models.dto.PersonKnownForItemDTO;
-import models.dto.PersonKnownForPageDTO;
-import models.dto.PersonKnownForStatsDTO;
-import org.mockito.Mockito;
-
+import static org.junit.Assert.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static play.inject.Bindings.bind;
 import org.apache.pekko.actor.ActorSystem;
 import org.apache.pekko.actor.typed.*;
-
-import static org.junit.Assert.assertEquals;
 import static play.mvc.Http.Status.BAD_REQUEST;
-import static play.mvc.Http.Status.INTERNAL_SERVER_ERROR;
 import static play.mvc.Http.Status.OK;
 import static play.test.Helpers.*;
-import static play.inject.Bindings.bind;
-import static org.mockito.Mockito.*;
 
 /**
  * Unit tests for {@link controllers.TmdbSearchController}.
@@ -98,6 +101,14 @@ public class TmdbSearchControllerTest extends WithApplication {
                 Mockito.when(financialPerformanceService.getMovieFinances(Mockito.anyInt()))
                                 .thenReturn(CompletableFuture.completedFuture(mockMovie));
 
+                Mockito.when(tmdbSearchService.fetchReviewsAsRawList(Mockito.anyString(), Mockito.anyInt()))
+                                .thenReturn(CompletableFuture
+                                                .completedFuture(Arrays.asList("Hiya there! I'm not null!")));
+
+                Mockito.when(tmdbSearchService.fetchReviewsAsRawList(Mockito.anyString(), Mockito.anyInt()))
+                                .thenReturn(CompletableFuture
+                                                .completedFuture(Arrays.asList("Hiya there! I'm not null!")));
+
                 PersonKnownForPageDTO dummyKnownForPage = new PersonKnownForPageDTO(
                                 java.util.List.of(new PersonKnownForItemDTO(1, "movie", "Test", "2000-01-01", 1.0, 1.0,
                                                 1, "https://example.com")),
@@ -122,6 +133,118 @@ public class TmdbSearchControllerTest extends WithApplication {
                                 .build();
         }
 
+        // DELIVERY 2 >>>
+        @Test
+        public void testWsFutureFlowExecuted() throws Exception {
+                Http.RequestHeader request = mock(Http.RequestHeader.class);
+
+                when(request.header("Origin"))
+                                .thenReturn(Optional.of("http://localhost:9000"));
+
+                // mock scala request id
+                play.api.mvc.RequestHeader scalaRequest = mock(play.api.mvc.RequestHeader.class);
+                when(scalaRequest.id()).thenReturn(123L);
+                when(request.asScala()).thenReturn(scalaRequest);
+
+                // mock ActorRef
+                ActorRef<UserParentActor.Command> mockActor = mock(ActorRef.class);
+                Field field = TmdbSearchController.class.getDeclaredField("userParentActor");
+                field.setAccessible(true);
+                field.set(controller, mockActor);
+
+                WebSocket ws = controller.ws();
+                assertNotNull(ws);
+        }
+
+        @Test
+        public void testSameOriginCheck_validOrigin() throws Exception {
+                Http.RequestHeader request = mock(Http.RequestHeader.class);
+                when(request.header("Origin")).thenReturn(Optional.of("http://localhost:9000"));
+
+                Method method = TmdbSearchController.class
+                                .getDeclaredMethod("sameOriginCheck", Http.RequestHeader.class);
+                method.setAccessible(true);
+
+                boolean result = (boolean) method.invoke(controller, request);
+
+                assertTrue(result);
+        }
+
+        @Test
+        public void testSameOriginCheck_noOrigin() throws Exception {
+                Http.RequestHeader request = mock(Http.RequestHeader.class);
+                when(request.header("Origin")).thenReturn(Optional.empty());
+
+                Method method = TmdbSearchController.class
+                                .getDeclaredMethod("sameOriginCheck", Http.RequestHeader.class);
+                method.setAccessible(true);
+
+                boolean result = (boolean) method.invoke(controller, request);
+
+                assertFalse(result);
+        }
+
+        @Test
+        public void testSameOriginCheck_invalidOrigin() throws Exception {
+                Http.RequestHeader request = mock(Http.RequestHeader.class);
+                when(request.header("Origin")).thenReturn(Optional.of("http://evil.com"));
+
+                Method method = TmdbSearchController.class
+                                .getDeclaredMethod("sameOriginCheck", Http.RequestHeader.class);
+                method.setAccessible(true);
+
+                boolean result = (boolean) method.invoke(controller, request);
+
+                assertFalse(result);
+        }
+
+        @Test
+        public void testOriginMatches() throws Exception {
+                Method method = TmdbSearchController.class
+                                .getDeclaredMethod("originMatches", String.class);
+                method.setAccessible(true);
+
+                boolean valid = (boolean) method.invoke(controller, "http://localhost:9000");
+                boolean invalid = (boolean) method.invoke(controller, "http://google.com");
+
+                assertTrue(valid);
+                assertFalse(invalid);
+        }
+
+        @Test
+        public void testForbiddenResult() throws Exception {
+                Method method = TmdbSearchController.class
+                                .getDeclaredMethod("forbiddenResult");
+                method.setAccessible(true);
+
+                CompletionStage<?> stage = (CompletionStage<?>) method.invoke(controller);
+
+                Object result = stage.toCompletableFuture().get();
+
+                assertNotNull(result);
+        }
+
+        @Test
+        public void testLogException() throws Exception {
+                Method method = TmdbSearchController.class
+                                .getDeclaredMethod("logException", Throwable.class);
+                method.setAccessible(true);
+
+                Object result = method.invoke(controller, new RuntimeException("boom"));
+
+                assertNotNull(result);
+        }
+
+        @Test
+        public void testWs_forbiddenPath() {
+                Http.RequestHeader request = mock(Http.RequestHeader.class);
+                when(request.header("Origin")).thenReturn(Optional.empty());
+
+                var ws = controller.ws();
+
+                assertNotNull(ws);
+        }
+
         @Test
         public void testIndex() {
                 Http.RequestBuilder request = new Http.RequestBuilder()
@@ -135,7 +258,7 @@ public class TmdbSearchControllerTest extends WithApplication {
         @Test
         public void testFinances() {
                 Result result = route(app,
-                        fakeRequest(GET, "/finances/11"));
+                                fakeRequest(GET, "/finances/11"));
                 assertEquals(OK, result.status());
         }
 
@@ -201,11 +324,15 @@ public class TmdbSearchControllerTest extends WithApplication {
 
         @Test
         public void testReview() {
-                Http.RequestBuilder request = new Http.RequestBuilder()
-                                .method(GET)
-                                .uri("/reviews/movie/1/fake");
+                // Http.RequestBuilder request = new Http.RequestBuilder()
+                // .method(GET)
+                // .uri("/reviews/movie/1/fake");
 
-                Result result = route(app, request);
+                // Result result = route(app, request);
+                // assertEquals(OK, result.status());
+
+                Result result = route(app,
+                                fakeRequest(GET, "/reviews/movie/1/fake"));
                 assertEquals(OK, result.status());
         }
 

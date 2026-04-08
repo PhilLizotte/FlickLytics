@@ -11,10 +11,13 @@ libraryDependencies += guice
 libraryDependencies += javaWs
 libraryDependencies += "jakarta.inject" % "jakarta.inject-api" % "2.0.1"
 libraryDependencies += "org.mockito" % "mockito-core" % "5.14.1" % Test
+libraryDependencies ++= Seq(
+  "org.apache.pekko" %% "pekko-actor-typed" % "1.0.2"
+)
+libraryDependencies += "org.apache.pekko" %% "pekko-actor-testkit-typed" % "1.0.3" % Test
 
 // Source: https://mvnrepository.com/artifact/org.apache.pekko/pekko-actor
 libraryDependencies += "org.apache.pekko" %% "pekko-actor" % "1.0.3"
-libraryDependencies += "org.apache.pekko" %% "pekko-actor-testkit-typed" % "1.0.3" % Test
 
 jacocoReportSettings := JacocoReportSettings()
 Test / javaSource := baseDirectory.value / "test"

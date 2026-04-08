@@ -1,5 +1,8 @@
 package controllers;
 
+import actors.UserParentActor;
+import actors.readability.ReadabilityActor;
+import actors.reviews.ReviewActor;
 import actors.fpActors.FinancialPerformanceActor;
 import actors.fpActors.GetFPInfo;
 import actors.fpActors.FpCommand;
@@ -14,24 +17,39 @@ import org.apache.pekko.actor.ActorSystem;
 import org.apache.pekko.actor.typed.Scheduler;
 import org.apache.pekko.actor.typed.javadsl.Adapter;
 import org.apache.pekko.actor.typed.javadsl.AskPattern;
-import play.mvc.Controller;
-import play.mvc.Result;
 
 import play.mvc.*;
 import javax.inject.*;
 
+import java.net.http.WebSocket;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import models.dto.GlobalDiversityStats;
+import org.apache.pekko.NotUsed;
+import org.apache.pekko.actor.ActorSystem;
+import org.apache.pekko.actor.typed.ActorRef;
+import org.apache.pekko.actor.typed.Props;
+import org.apache.pekko.actor.typed.Scheduler;
+import org.apache.pekko.actor.typed.javadsl.Adapter;
+import org.apache.pekko.actor.typed.javadsl.AskPattern;
+import org.apache.pekko.stream.javadsl.Flow;
+import org.slf4j.Logger;
+import play.libs.F.Either;
+import play.mvc.*;
 import services.features.diversity.GlobalDiversityService;
-
 import services.features.financial.FinancialPerformanceService;
 import services.features.personstats.PersonStatsService;
 import services.features.readability.ReadabilityService;
 import services.features.reviews.ReviewSentimentService;
-
 import services.tmdb.TmdbSearchService;
+
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 /**
  * Controller providing TMDb search and detail endpoints.
@@ -41,7 +59,8 @@ import services.tmdb.TmdbSearchService;
  * Delegates data fetching and computations to the corresponding services.
  * </p>
  *
- *
+ * @author all_team_members
+ * 
  */
 public class TmdbSearchController extends Controller {
     private final TmdbSearchService tmdbSearchService;
@@ -50,8 +69,14 @@ public class TmdbSearchController extends Controller {
     private final ReadabilityService readabilityService;
     private final GlobalDiversityService globalDiversityService;
     private final ReviewSentimentService reviewSentimentService;
-
+    // second delivery - gp
     private final ActorSystem actorSystem;
+    private final Duration timeout = Duration.ofSeconds(1);
+    private final Logger logger = org.slf4j.LoggerFactory.getLogger("controllers.TmdbSearchController");
+    private final ActorRef<UserParentActor.Command> userParentActor;
+    // second delivery - individual
+    private final ActorRef<ReadabilityActor.Command> readabilityActor;
+    private final ActorRef<ReviewActor.Command> reviewActor;
     private final ActorRef<actors.fpActors.FpCommand> fpActor;
     private final Scheduler scheduler;
 
@@ -63,7 +88,6 @@ public class TmdbSearchController extends Controller {
             ReadabilityService readabilityService,
             GlobalDiversityService globalDiversityService,
             ReviewSentimentService reviewSentimentService,
-
             ActorSystem classicActorSystem) {
         this.tmdbSearchService = tmdbSearchService;
         this.fpService = fpService;
@@ -71,15 +95,118 @@ public class TmdbSearchController extends Controller {
         this.readabilityService = readabilityService;
         this.globalDiversityService = globalDiversityService;
         this.reviewSentimentService = reviewSentimentService;
-
-        org.apache.pekko.actor.typed.ActorSystem<Void> typedSystem =
-                Adapter.toTyped(classicActorSystem.classicSystem());
+        org.apache.pekko.actor.typed.ActorSystem<Void> typedSystem = Adapter.toTyped(classicActorSystem);
         this.actorSystem = classicActorSystem;
+        this.readabilityActor = typedSystem.systemActorOf(ReadabilityActor.create(readabilityService),
+                "readabilityActor", Props.empty());
+
+        this.reviewActor = typedSystem.systemActorOf(ReviewActor.create(reviewSentimentService),
+                "reviewActor", Props.empty());
+
         this.fpActor = typedSystem.systemActorOf(
                 FinancialPerformanceActor.create(),
-                "fpActor", Props.empty()
-        );
+                "fpActor", Props.empty());
+
         this.scheduler = typedSystem.scheduler();
+        // GP part
+        this.userParentActor = typedSystem.systemActorOf(UserParentActor.create(),
+                "userParentActor", Props.empty());
+    }
+
+    /**
+     * setting up the web socket
+     *
+     * @author Ali Maher
+     */
+    public WebSocket ws() {
+        return WebSocket.Json.acceptOrResult(request -> {
+            if (sameOriginCheck(request)) {
+                final CompletionStage<Flow<JsonNode, JsonNode, NotUsed>> future = wsFutureFlow(request);
+                final CompletionStage<Either<Result, Flow<JsonNode, JsonNode, ?>>> stage = future
+                        .thenApply(Either::Right);
+                return stage.exceptionally(this::logException);
+            } else {
+                return forbiddenResult();
+            }
+        });
+    }
+
+    /**
+     * Helper method to create the WebSocket flow for a given request.
+     *
+     * @author Ali Maher
+     */
+    private CompletionStage<Flow<JsonNode, JsonNode, NotUsed>> wsFutureFlow(Http.RequestHeader request) {
+        String id = Long.toString(request.asScala().id());
+        Scheduler scheduler = Adapter.toTyped((org.apache.pekko.actor.Scheduler) actorSystem.scheduler());
+
+        return AskPattern.ask(
+                userParentActor,
+                (ActorRef<Flow<JsonNode, JsonNode, NotUsed>> replyTo) -> new UserParentActor.Create(id, replyTo),
+                timeout,
+                scheduler);
+    }
+
+    /**
+     * Helper method to return a forbidden result when the same-origin check fails.
+     *
+     * @author Ali Maher
+     */
+    private CompletionStage<Either<Result, Flow<JsonNode, JsonNode, ?>>> forbiddenResult() {
+        final Result forbidden = Results.forbidden("forbidden");
+        final Either<Result, Flow<JsonNode, JsonNode, ?>> left = Either.Left(forbidden);
+
+        return CompletableFuture.completedFuture(left);
+    }
+
+    /**
+     * @author Ali Maher
+     *
+     *         Helper method to log exceptions that occur during WebSocket flow
+     *         creation.
+     */
+    private Either<Result, Flow<JsonNode, JsonNode, ?>> logException(Throwable throwable) {
+        logger.error("Cannot create websocket", throwable);
+        Result result = Results.internalServerError("error");
+        return Either.Left(result);
+    }
+
+    /**
+     * Checks that the WebSocket comes from the same origin. This is necessary to
+     * protect
+     * against Cross-Site WebSocket Hijacking as WebSocket does not implement Same
+     * Origin Policy.
+     * <p>
+     *
+     * @author Ali Maher
+     *
+     */
+    private boolean sameOriginCheck(Http.RequestHeader rh) {
+        final Optional<String> origin = rh.header("Origin");
+
+        if (!origin.isPresent()) {
+            logger.error("originCheck: rejecting request because no Origin header found");
+            return false;
+        } else if (originMatches(origin.get())) {
+            logger.debug("originCheck: originValue = " + origin);
+            return true;
+        } else {
+            logger.error("originCheck: rejecting request because Origin header value " + origin
+                    + " is not in the same origin: "
+                    + String.join(", ", validOrigins));
+            return false;
+        }
+    }
+
+    /**
+     * Helper method to check if the actual origin matches any of the valid origins.
+     *
+     * @author Ali Maher
+     */
+    private final List<String> validOrigins = Arrays.asList("localhost:9000");
+
+    private boolean originMatches(String actualOrigin) {
+        return validOrigins.stream().anyMatch(actualOrigin::contains);
     }
 
     /**
@@ -131,7 +258,8 @@ public class TmdbSearchController extends Controller {
     }
 
     /**
-     * An actor-driven action that renders an HTML page displaying financial information for a
+     * An actor-driven action that renders an HTML page displaying financial
+     * information for a
      * movie based on its <code>id</code>. This feature is only intended for movies,
      * and does not work with shows or people.
      * 
@@ -146,39 +274,33 @@ public class TmdbSearchController extends Controller {
         // TO-DO: Call the fpService function.
         // Incorporate its output to the actor nonsense.
         return fpService.getMovieFinances(id)
-                .thenCompose(info ->
-                        AskPattern.<FpCommand, actors.fpActors.FpResult>ask(
-                                fpActor,
-                                replyTo -> new GetFPInfo(info, replyTo),
-                                Duration.ofSeconds(3),
-                                scheduler
-                        ).thenApply(fpInfo ->
-                                ok(views.html.financialPerformance.render(
-                                                fpInfo.title,
-                                                fpInfo.netProfit,
-                                                fpInfo.roi,
-                                                fpInfo.financialStatus
-                                        ) 
-                                )
-                        )
-                );
-                
+                .thenCompose(info -> AskPattern.<FpCommand, actors.fpActors.FpResult>ask(
+                        fpActor,
+                        replyTo -> new GetFPInfo(info, replyTo),
+                        Duration.ofSeconds(3),
+                        scheduler).thenApply(
+                                fpInfo -> ok(views.html.financialPerformance.render(
+                                        fpInfo.title,
+                                        fpInfo.netProfit,
+                                        fpInfo.roi,
+                                        fpInfo.financialStatus))));
 
         /*
-        // TO-DO: create actor
-        return fpService.getMovieFinances(id)
-                .handle((json, ex) -> {
-                    if (ex != null) {
-                        return badRequest("Movie not found");
-                    }
-
-                    String title = json.path("title").asText();
-                    String netProfit = json.path("netProfit").asText();
-                    String roiPercent = json.path("roiPercent").asText() + "%";
-                    String financialRating = json.path("financialRating").asText();
-
-                    return ok(views.html.financialPerformance.render(title, netProfit, roiPercent, financialRating));
-                });
+         * // TO-DO: create actor
+         * return fpService.getMovieFinances(id)
+         * .handle((json, ex) -> {
+         * if (ex != null) {
+         * return badRequest("Movie not found");
+         * }
+         * 
+         * String title = json.path("title").asText();
+         * String netProfit = json.path("netProfit").asText();
+         * String roiPercent = json.path("roiPercent").asText() + "%";
+         * String financialRating = json.path("financialRating").asText();
+         * 
+         * return ok(views.html.financialPerformance.render(title, netProfit,
+         * roiPercent, financialRating));
+         * });
          */
     }
 
@@ -229,16 +351,15 @@ public class TmdbSearchController extends Controller {
      */
     public CompletionStage<Result> movieDetails(Integer id) {
         return tmdbSearchService.movieDetails(id)
-                .thenApply(movie -> {
-                    double readingScore = readabilityService.calculateFleschReaddingEase(movie.getOverview());
-
-                    double gradeLevel = readabilityService.calculateFleschKincaidGradeLevel(movie.getOverview());
-
-                    return ok(views.html.movieDetails.render(
-                            movie,
-                            readingScore,
-                            gradeLevel));
-                });
+                .thenCompose(movie -> AskPattern.<ReadabilityActor.Command, ReadabilityActor.Result>ask(
+                        readabilityActor,
+                        replyTo -> new ReadabilityActor.Compute(movie.getOverview(), replyTo),
+                        Duration.ofSeconds(3),
+                        scheduler).thenApply(
+                                readability -> ok(views.html.movieDetails.render(
+                                        movie,
+                                        readability.fleschScore,
+                                        readability.gradeLevel))));
     }
 
     /**
@@ -256,20 +377,19 @@ public class TmdbSearchController extends Controller {
      */
     public CompletionStage<Result> tvDetails(Integer id) {
         return tmdbSearchService.tvDetails(id)
-                .thenApply(tvShow -> {
-                    double readingScore = readabilityService.calculateFleschReaddingEase(tvShow.getOverview());
-
-                    double gradeLevel = readabilityService.calculateFleschKincaidGradeLevel(tvShow.getOverview());
-
-                    return ok(views.html.tvDetails.render(
-                            tvShow,
-                            readingScore,
-                            gradeLevel));
-                });
+                .thenCompose(tvShow -> AskPattern.<ReadabilityActor.Command, ReadabilityActor.Result>ask(
+                        readabilityActor,
+                        replyTo -> new ReadabilityActor.Compute(tvShow.getOverview(), replyTo),
+                        Duration.ofSeconds(3),
+                        scheduler).thenApply(
+                                readability -> ok(views.html.tvDetails.render(
+                                        tvShow,
+                                        readability.fleschScore,
+                                        readability.gradeLevel))));
     }
 
     /**
-     * Renders the review details page
+     * Renders the review details page via actor
      * 
      * @author Craig Kogan
      * 
@@ -278,12 +398,16 @@ public class TmdbSearchController extends Controller {
      * @param title title of movie/tv show
      * @return Status of the request
      */
-    public CompletionStage<Result> reviewDetails(String kind, Integer id, String title) {
-        return reviewSentimentService.fetchReviews(kind, id)
-                .thenApply(reviews -> {
-                    return ok(views.html.reviews.render(
-                            title,
-                            reviews));
-                });
+    public CompletionStage<Result> reviewDetailsWithActor(String kind, Integer id, String title) {
+        return tmdbSearchService.fetchReviewsAsRawList(kind, id)
+                .thenCompose(reviews -> AskPattern.<ReviewActor.Command, ReviewActor.Result>ask(
+                        reviewActor,
+                        replyTo -> new ReviewActor.Compute(reviews, replyTo),
+                        Duration.ofSeconds(10), scheduler).thenApply(
+                                processedReviews -> ok(views.html.reviews.render(
+                                        title,
+                                        processedReviews.review))));
+
     }
+
 }

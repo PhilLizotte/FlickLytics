@@ -11,6 +11,13 @@ import play.libs.ws.WSClient;
 import play.libs.ws.WSRequest;
 import play.libs.ws.WSResponse;
 
+// Sorry for putting review stuff in here, but it makes it a lot easier to get 100% coverage.
+// tldr I had to move the tmdb query from the review service into the tmdb service,
+// and due to my structure, it's a lot easier to test a bunch of things at once
+// to get full coverage 
+import models.domain.Review;
+import services.features.reviews.ReviewSentimentService;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.util.HashMap;
@@ -529,8 +536,8 @@ public class TmdbSearchServiceTest {
         ObjectNode root = Json.newObject();
         ArrayNode arr = Json.newArray();
 
-        arr.addNull();      // null
-        arr.add(123);       // not object
+        arr.addNull(); // null
+        arr.add(123); // not object
 
         root.set("results", arr);
 
@@ -637,7 +644,6 @@ public class TmdbSearchServiceTest {
         assertEquals(false, res.has("knownForUrl"));
     }
 
-
     @Mock
     WSClient ws;
     @Mock
@@ -648,16 +654,17 @@ public class TmdbSearchServiceTest {
     TmdbConfig tmdbConfig;
     @InjectMocks
     TmdbSearchService service;
+
     @Before
     public void setup() throws Exception {
         MockitoAnnotations.initMocks(this);
-        
+
         Field cacheField = TmdbSearchService.class.getDeclaredField("genreCache");
         cacheField.setAccessible(true);
         Map<String, Object> genreCache = (Map<String, Object>) cacheField.get(service);
         genreCache.clear();
     }
-    
+
     @Test
     public void testCacheNullTriggersHttpCall() throws Exception {
         // Mock HTTP
@@ -670,20 +677,168 @@ public class TmdbSearchServiceTest {
         ObjectMapper mapper = new ObjectMapper();
         JsonNode json = mapper.readTree("{\"genres\":[{\"id\":1,\"name\":\"Action\"}]}");
         when(wsResponse.asJson()).thenReturn(json);
-        
+
         Method fetchMethod = TmdbSearchService.class.getDeclaredMethod("fetchGenreMap", String.class);
         fetchMethod.setAccessible(true);
-        CompletionStage<Map<Integer, String>> resultStage =
-                (CompletionStage<Map<Integer, String>>) fetchMethod.invoke(service, "movie");
+        CompletionStage<Map<Integer, String>> resultStage = (CompletionStage<Map<Integer, String>>) fetchMethod
+                .invoke(service, "movie");
 
         Map<Integer, String> result = resultStage.toCompletableFuture().get();
 
         assertEquals(1, result.size());
         assertEquals("Action", result.get(1));
-        
+
         Field cacheField = TmdbSearchService.class.getDeclaredField("genreCache");
         cacheField.setAccessible(true);
         Map<String, Object> genreCache = (Map<String, Object>) cacheField.get(service);
         assertTrue(genreCache.containsKey("movie"));
+    }
+
+    /**
+     * @author Craig Kogan (40175780)
+     *         Test the API call method of the ReviewSentimentService. API calls are
+     *         all
+     *         mocked.
+     * 
+     * @throws Exception Can throw some exception related to getting the completed
+     *                   future.
+     */
+    @Test
+    public void fetchReviewsReviewTest() throws Exception {
+        WSClient ws = mock(WSClient.class);
+        TmdbConfig config = mock(TmdbConfig.class);
+        when(config.getBaseUrl()).thenReturn("https://api.example");
+        when(config.getApiKey()).thenReturn("api_key");
+
+        WSRequest request = mock(WSRequest.class);
+        WSResponse response = mock(WSResponse.class);
+
+        TmdbSearchService service = new TmdbSearchService(ws, config);
+
+        ObjectMapper mapper = new ObjectMapper();
+
+        JsonNode apiJson = mapper.readTree(
+                """
+                        {
+                          "id": -1,
+                          "page": 1,
+                          "results": [
+                            {
+                                "author": "Bob Angelson",
+                                "author_details": {
+                                    "name": "bob",
+                                    "username": "angel",
+                                    "avatar_path": null,
+                                    "rating": null
+                                },
+                                "content": "I love factorio so much!",
+                                "created_at": "2012-06-05T23:00:24.000Z",
+                                "id": "abc123",
+                                "updated_at": "2012-06-05T23:00:24.000Z",
+                                "url": "www.nah_I_aint_making_urls.ca"
+                            },
+                            {
+                                "author": "Mr. Wizard",
+                                "author_details": {
+                                    "name": "The Almighty",
+                                    "username": "Secretely_the_devil",
+                                    "avatar_path": null,
+                                    "rating": null
+                                },
+                                "content": "One day I shall rule the world, and you will all know my awesome power!",
+                                "created_at": "2012-06-05T23:00:24.000Z",
+                                "id": "abc456",
+                                "updated_at": "2012-06-05T23:00:24.000Z",
+                                "url": "www.nah_I_aint_making_urls.ca"
+                            },
+                            {
+                                "author": "Death",
+                                "author_details": {
+                                    "name": "Thanatos",
+                                    "username": "reaper_man22",
+                                    "avatar_path": null,
+                                    "rating": null
+                                },
+                                "content": "It was a good movie to watch while going on my daily reaping rounds! I highly recommend it to everyone!",
+                                "created_at": "2012-06-05T23:00:24.000Z",
+                                "id": "abc789",
+                                "updated_at": "2012-06-05T23:00:24.000Z",
+                                "url": "www.nah_I_aint_making_urls.ca"
+                            },
+                            {
+                                "author": "Sheep",
+                                "author_details": {
+                                    "name": "bahh",
+                                    "username": "BAHHHHHH",
+                                    "avatar_path": null,
+                                    "rating": null
+                                },
+                                "content": "bah bah BAhh baaAAAhh bbbbAAAAHHHHHHHHHH",
+                                "created_at": "2012-06-05T23:00:24.000Z",
+                                "id": "def123",
+                                "updated_at": "2012-06-05T23:00:24.000Z",
+                                "url": "www.nah_I_aint_making_urls.ca"
+                            },
+                            {
+                                "author": "Bowser",
+                                "author_details": {
+                                    "name": "The Koopa King",
+                                    "username": "Totally the real Mario",
+                                    "avatar_path": null,
+                                    "rating": null
+                                },
+                                "content": "BWAHAHA! I captured princess peach once again! Now she'll love me for sure! Oh wait, I mean, itsa me, Mario! Princess, I ave come to save you! I love you sooo much!",
+                                "created_at": "2012-06-05T23:00:24.000Z",
+                                "id": "def456",
+                                "updated_at": "2012-06-05T23:00:24.000Z",
+                                "url": "www.nah_I_aint_making_urls.ca"
+                            },
+                            {
+                                "author": "The Big Cheese",
+                                "author_details": {
+                                    "name": "Boss man",
+                                    "username": "Boss mans number one helper",
+                                    "avatar_path": null,
+                                    "rating": null
+                                },
+                                "content": "So, the boss man told me to write a review for this thing. I dont know what to write. like, I'm supposed to know what boss man is thinking? How am I supposed to know that? I didn't even watch the damn thing. Sigh. Im overworked, boss man is terrible at keeping track of his schedule, and on top of that I need to do all of these annoying tasks for him. Has he even considered the poor workers that he's forcing to do all these dreaful tasks! It's terrible. I want to leave this disaster of a job behind me already. Anyway, uhh, I think I've hit my word limit now, so that should be dealt with.",
+                                "created_at": "2012-06-05T23:00:24.000Z",
+                                "id": "def789",
+                                "updated_at": "2012-06-05T23:00:24.000Z",
+                                "url": "www.nah_I_aint_making_urls.ca"
+                            }
+                          ]
+                        }
+                        """);
+
+        when(config.getBaseUrl()).thenReturn("https://api.test.com");
+        when(config.getApiKey()).thenReturn("fakeAPIKey");
+
+        when(response.asJson()).thenReturn(apiJson);
+
+        when(ws.url(anyString())).thenReturn(request);
+        when(request.addQueryParameter(anyString(), anyString())).thenReturn(request);
+        when(request.get()).thenReturn(
+                CompletableFuture.completedFuture(response));
+
+        Review review = new ReviewSentimentService()
+                .extractSentiment(service.fetchReviewsAsRawList("", -1).toCompletableFuture().get());
+
+        // review = reviewStage.toCompletableFuture().get();
+
+        String[] expected = { ":-)", ":|", ":-)", ":|", ":-)", ":-(" };
+
+        // check all the reviews
+        assertEquals("fetch review 0", review.getSentimentAtIndex(0), expected[0]);
+        assertEquals("fetch review 1", review.getSentimentAtIndex(1), expected[1]);
+        assertEquals("fetch review 2", review.getSentimentAtIndex(2), expected[2]);
+        assertEquals("fetch review 3", review.getSentimentAtIndex(3), expected[3]);
+        assertEquals("fetch review 4", review.getSentimentAtIndex(4), expected[4]);
+        assertEquals("fetch review 5", review.getSentimentAtIndex(5), expected[5]);
+
+        assertEquals("fetch overall", review.getOverallSentiment(), ":|");
+
+        assertEquals("fetch review preservation", review.getReviews().get(0),
+                "I love factorio so much!");
     }
 }

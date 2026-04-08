@@ -15,6 +15,7 @@ import play.libs.Json;
 import play.libs.ws.WSClient;
 import play.libs.ws.WSRequest;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -43,13 +44,15 @@ public class TmdbSearchService {
         this.tmdbConfig = tmdbConfig;
         this.objectMapper = Json.mapper();
 
-        this.reviewService = new ReviewSentimentService(ws, tmdbConfig);
+        this.reviewService = new ReviewSentimentService();
     }
 
     /**
-     * Performs a search request to TMDb based on the given category and query string.
+     * Performs a search request to TMDb based on the given category and query
+     * string.
      * <p>
-     * This method determines the appropriate TMDb endpoint depending on the category
+     * This method determines the appropriate TMDb endpoint depending on the
+     * category
      * (movie, tv, or person), fetches the genre mapping if needed, and performs
      * an asynchronous HTTP request to retrieve search results.
      * The results are then enriched with additional fields such as genre names
@@ -59,7 +62,7 @@ public class TmdbSearchService {
      * @author Aram Zand
      *
      * @param category the category to search in (movie, tv, or person)
-     * @param query the search query string
+     * @param query    the search query string
      * @return a CompletionStage containing the enriched JSON response
      * @throws IllegalArgumentException if the category is invalid
      */
@@ -144,7 +147,8 @@ public class TmdbSearchService {
      * Fetches the details of a movie from TMDb API by its ID.
      *
      * @param id the unique identifier of the movie
-     * @return a {@link CompletionStage} that will complete with the {@link Movie} domain object
+     * @return a {@link CompletionStage} that will complete with the {@link Movie}
+     *         domain object
      */
     public CompletionStage<Movie> movieDetails(int id) {
         String url = tmdbConfig.getBaseUrl() + "/movie/" + id;
@@ -163,7 +167,8 @@ public class TmdbSearchService {
      * Fetches the details of a TV show from TMDb API by its ID.
      *
      * @param id the unique identifier of the TV show
-     * @return a {@link CompletionStage} that will complete with the {@link TVShow} domain object
+     * @return a {@link CompletionStage} that will complete with the {@link TVShow}
+     *         domain object
      */
     public CompletionStage<TVShow> tvDetails(int id) {
         String url = tmdbConfig.getBaseUrl() + "/tv/" + id;
@@ -207,24 +212,23 @@ public class TmdbSearchService {
         }
     }
 
-
     /**
      * Enriches raw TMDb search results with additional computed fields.
      * <p>
      * Depending on the category, this method:
      * <ul>
-     *     <li>Adds a details URL for movies and TV shows</li>
-     *     <li>Adds genre names using the provided genre map</li>
-     *     <li>Normalizes fields such as release date and language</li>
-     *     <li>Adds profile-related URLs for persons</li>
+     * <li>Adds a details URL for movies and TV shows</li>
+     * <li>Adds genre names using the provided genre map</li>
+     * <li>Normalizes fields such as release date and language</li>
+     * <li>Adds profile-related URLs for persons</li>
      * </ul>
      * </p>
      *
      * @author Aram Zand
      *
-     * @param category the category of the search (movie, tv, person)
+     * @param category   the category of the search (movie, tv, person)
      * @param searchJson the raw JSON response from TMDb
-     * @param genreMap mapping of genre IDs to names
+     * @param genreMap   mapping of genre IDs to names
      * @return enriched JSON node
      */
     private JsonNode enrichResults(String category, JsonNode searchJson, Map<Integer, String> genreMap) {
@@ -246,7 +250,6 @@ public class TmdbSearchService {
             ObjectNode o = ((ObjectNode) item).deepCopy();
 
             int id = o.hasNonNull("id") ? o.get("id").asInt() : -1;
-
 
             if ("movie".equalsIgnoreCase(category)) {
                 o.put("detailsUrl", "https://www.themoviedb.org/movie/" + id);
@@ -277,14 +280,14 @@ public class TmdbSearchService {
      * <p>
      * Converts TMDb-specific fields into a unified format:
      * <ul>
-     *     <li>release_date / first_air_date → releaseDate</li>
-     *     <li>original_language → language</li>
+     * <li>release_date / first_air_date → releaseDate</li>
+     * <li>original_language → language</li>
      * </ul>
      * </p>
      * 
      * @author Aram Zand
      *
-     * @param o the JSON object representing a media item
+     * @param o     the JSON object representing a media item
      * @param movie true if the item is a movie, false if TV show
      */
     private void normalizeCommonMovieTvFields(ObjectNode o, boolean movie) {
@@ -328,4 +331,61 @@ public class TmdbSearchService {
         }
         return "https://image.tmdb.org/t/p/original" + pathNode.asText();
     }
+
+    /**
+     * Query the TMDB database and get up to 50 existing reviews for the give
+     * movie/tv show
+     * 
+     * @param kind The kind of media, accepted inputs at movie/tv
+     * @param id   The id of the movie/tv show
+     * @return A List<String> of the reviews of the movie/tv show. Capped to 50.
+     */
+    public CompletionStage<List<String>> fetchReviewsAsRawList(String kind, int id) {
+        String url = tmdbConfig.getBaseUrl() + "/" + kind + "/" + id + "/reviews";
+        WSRequest request1 = ws.url(url)
+                .addQueryParameter("api_key", tmdbConfig.getApiKey())
+                .addQueryParameter("language", "en-us")
+                .addQueryParameter("page", "1");
+
+        WSRequest request2 = ws.url(url)
+                .addQueryParameter("api_key", tmdbConfig.getApiKey())
+                .addQueryParameter("language", "en-us")
+                .addQueryParameter("page", "2");
+
+        WSRequest request3 = ws.url(url)
+                .addQueryParameter("api_key", tmdbConfig.getApiKey())
+                .addQueryParameter("language", "en-us")
+                .addQueryParameter("page", "3");
+
+        List<String> list = new ArrayList<>();
+        return request1.get()
+                .thenCompose(resp1 -> request2.get().thenCompose(resp2 -> request3.get().thenApply(resp3 -> {
+                    JsonNode res1 = resp1.asJson().get("results");
+                    JsonNode res2 = resp2.asJson().get("results");
+                    JsonNode res3 = resp3.asJson().get("results");
+
+                    if (res1 != null && res1.isArray()) {
+                        for (JsonNode r : res1) {
+                            list.add(r.get("content").asText());
+                        }
+                    }
+
+                    if (res2 != null && res2.isArray()) {
+                        for (JsonNode r : res2) {
+                            list.add(r.get("content").asText());
+                        }
+                    }
+
+                    if (res3 != null && res3.isArray()) {
+                        for (JsonNode r : res3) {
+                            list.add(r.get("content").asText());
+                            if (list.size() >= 50) {
+                                break;
+                            }
+                        }
+                    }
+                    return list;
+                })));
+    }
+
 }
