@@ -1,49 +1,83 @@
 package actors.fpActors;
 
-import org.apache.pekko.actor.typed.ActorRef;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.pekko.actor.typed.Behavior;
 import org.apache.pekko.actor.typed.javadsl.*;
-import org.apache.pekko.pattern.StatusReply;
+import services.features.financial.FinancialPerformanceService;
 
-import java.time.Duration;
+public class FinancialPerformanceActor extends AbstractBehavior<FpCommand> {
 
-public class FinancialPerformanceActor extends AbstractBehavior<FinancialPerformanceActor.GetFPInfo> {
-
-    public static class GetFPInfo {
-        public final int id;
-
-        public GetFPInfo(int id) {
-            this.id = id;
-        }
-    }
-
-    public static Behavior<FinancialPerformanceActor.GetFPInfo> create() {
+    /**
+     * Standard factory architecture FpCommand behavior
+     * 
+     * @return FpCommand behavior
+     */
+    public static Behavior<FpCommand> create() {
         return Behaviors.setup(FinancialPerformanceActor::new);
     }
 
-    private FinancialPerformanceActor(ActorContext<FinancialPerformanceActor.GetFPInfo> context) {
+    /**
+     * Standard constructor
+     * 
+     * @param context the actor context
+     */
+    private FinancialPerformanceActor(
+            ActorContext<FpCommand> context) {
         super(context);
     }
 
+    /**
+     * Standard actor action reactor, specifically when receiving an FpCommand
+     * 
+     * @return the return parameter of onGetFPInfo()
+     */
     @Override
-    public Receive<FinancialPerformanceActor.GetFPInfo> createReceive() {
+    public Receive<FpCommand> createReceive() {
         return newReceiveBuilder()
-                .onMessage(FinancialPerformanceActor.GetFPInfo.class, this::onGetFPInfo).build();
+                .onMessage(FpCommand.class, this::onGetFPInfo).build();
     }
 
-    private Behavior<FinancialPerformanceActor.GetFPInfo> onGetFPInfo(FinancialPerformanceActor.GetFPInfo command) {
-        getContext().getLog().info("Undelayed: This actor now has id {}", command.id);
-        
-        // replace getSender() with a replyTo field
-        // - But that's an actor... how do I make this do something from the field?
-        
-        // I might have to think things over from scratch.
-        // Probably need to call the page render function from within this method.
-        // ... and somehow build a response object in the controller method?
-        
-        
-        // Response is a JSON object with all the required fields
-        // getSender().tell(response, this);
+    /**
+     * Calculates a movie's net profit, ROI percent and financial rating based off
+     * of its budget and revenue.
+     * 
+     * @param command behavior object containing movie json.
+     * @return Result behavior, containing all financial information of the movie.
+     */
+    private Behavior<FpCommand> onGetFPInfo(FpCommand command) {
+        ObjectNode info = ((GetFPInfo) command).info;
+        getContext().getLog().info("Getting financial info for movie with id {}...", info.get("id").asInt());
+
+        int budget = info.get("budget").asInt();
+        int revenue = info.get("revenue").asInt();
+
+        int netProfit = revenue - budget;
+        String roiPercent;
+        float roiPercentNum;
+        String financialRating;
+        if (budget == 0) {
+            roiPercent = "Unknown; This movie has no recorded budget.";
+            financialRating = "Unknown";
+        } else {
+            roiPercentNum = (float) (100 * ((double)netProfit / (double)budget));
+            roiPercent = String.format("%.2f", roiPercentNum);
+            if (roiPercentNum < 0) {
+                financialRating = "Financial Loss";
+            } else if (roiPercentNum < 200) {
+                financialRating = "Profitable";
+            } else if (roiPercentNum < 500) {
+                financialRating = "High Return";
+            } else {
+                financialRating = "Blockbuster Success";
+            }
+        }
+
+        ((GetFPInfo) command).replyTo.tell(new FpResult(
+                info.get("title").asText(),
+                String.valueOf(netProfit),
+                roiPercent,
+                financialRating
+        ));
         
         return this;
     }

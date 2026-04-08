@@ -13,6 +13,7 @@ libraryDependencies += "org.mockito" % "mockito-core" % "5.14.1" % Test
 
 // Source: https://mvnrepository.com/artifact/org.apache.pekko/pekko-actor
 libraryDependencies += "org.apache.pekko" %% "pekko-actor" % "1.0.3"
+libraryDependencies += "org.apache.pekko" %% "pekko-actor-testkit-typed" % "1.0.3" % Test
 
 jacocoReportSettings := JacocoReportSettings()
 Test / javaSource := baseDirectory.value / "test"

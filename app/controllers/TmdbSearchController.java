@@ -1,16 +1,22 @@
 package controllers;
 
 import actors.fpActors.FinancialPerformanceActor;
+import actors.fpActors.GetFPInfo;
+import actors.fpActors.FpCommand;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.inject.Inject;
 import org.apache.pekko.actor.ActorSelection;
 import org.apache.pekko.actor.typed.ActorRef;
 import org.apache.pekko.actor.typed.Props;
 import static org.apache.pekko.pattern.Patterns.ask;
+import org.apache.pekko.actor.ActorSystem;
+
+import org.apache.pekko.actor.typed.Scheduler;
+import org.apache.pekko.actor.typed.javadsl.Adapter;
+import org.apache.pekko.actor.typed.javadsl.AskPattern;
 import play.mvc.Controller;
 import play.mvc.Result;
 
-import org.apache.pekko.actor.typed.ActorSystem;
 import play.mvc.*;
 import javax.inject.*;
 
@@ -18,7 +24,6 @@ import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import models.dto.GlobalDiversityStats;
-import ref.GreeterMain;
 import services.features.diversity.GlobalDiversityService;
 
 import services.features.financial.FinancialPerformanceService;
@@ -46,6 +51,10 @@ public class TmdbSearchController extends Controller {
     private final GlobalDiversityService globalDiversityService;
     private final ReviewSentimentService reviewSentimentService;
 
+    private final ActorSystem actorSystem;
+    private final ActorRef<actors.fpActors.FpCommand> fpActor;
+    private final Scheduler scheduler;
+
     @Inject
     public TmdbSearchController(
             TmdbSearchService tmdbSearchService,
@@ -53,13 +62,24 @@ public class TmdbSearchController extends Controller {
             PersonStatsService personStatsService,
             ReadabilityService readabilityService,
             GlobalDiversityService globalDiversityService,
-            ReviewSentimentService reviewSentimentService) {
+            ReviewSentimentService reviewSentimentService,
+
+            ActorSystem classicActorSystem) {
         this.tmdbSearchService = tmdbSearchService;
         this.fpService = fpService;
         this.personStatsService = personStatsService;
         this.readabilityService = readabilityService;
         this.globalDiversityService = globalDiversityService;
         this.reviewSentimentService = reviewSentimentService;
+
+        org.apache.pekko.actor.typed.ActorSystem<Void> typedSystem =
+                Adapter.toTyped(classicActorSystem.classicSystem());
+        this.actorSystem = classicActorSystem;
+        this.fpActor = typedSystem.systemActorOf(
+                FinancialPerformanceActor.create(),
+                "fpActor", Props.empty()
+        );
+        this.scheduler = typedSystem.scheduler();
     }
 
     /**
@@ -111,7 +131,7 @@ public class TmdbSearchController extends Controller {
     }
 
     /**
-     * An action that renders an HTML page displaying financial information for a
+     * An actor-driven action that renders an HTML page displaying financial information for a
      * movie based on its <code>id</code>. This feature is only intended for movies,
      * and does not work with shows or people.
      * 
@@ -123,9 +143,29 @@ public class TmdbSearchController extends Controller {
      *         successfully, or if not, the error code.
      */
     public CompletionStage<Result> finances(int id) {
-        fpService.getMovieFinances(id);
-        return null;
+        // TO-DO: Call the fpService function.
+        // Incorporate its output to the actor nonsense.
+        return fpService.getMovieFinances(id)
+                .thenCompose(info ->
+                        AskPattern.<FpCommand, actors.fpActors.FpResult>ask(
+                                fpActor,
+                                replyTo -> new GetFPInfo(info, replyTo),
+                                Duration.ofSeconds(3),
+                                scheduler
+                        ).thenApply(fpInfo ->
+                                ok(views.html.financialPerformance.render(
+                                                fpInfo.title,
+                                                fpInfo.netProfit,
+                                                fpInfo.roi,
+                                                fpInfo.financialStatus
+                                        ) 
+                                )
+                        )
+                );
+                
+
         /*
+        // TO-DO: create actor
         return fpService.getMovieFinances(id)
                 .handle((json, ex) -> {
                     if (ex != null) {
@@ -139,7 +179,6 @@ public class TmdbSearchController extends Controller {
 
                     return ok(views.html.financialPerformance.render(title, netProfit, roiPercent, financialRating));
                 });
-                */
          */
     }
 
@@ -150,13 +189,11 @@ public class TmdbSearchController extends Controller {
      * @param id The id of the movie
      * @return Status of the request
      */
-    /*
     public CompletionStage<Result> searchMovieById(int id) {
         return fpService.getMovieFinances(id)
                 .thenApply((JsonNode json) -> ok(json))
                 .exceptionally(ex -> badRequest("Unknown movie ID"));
     }
-    */
 
     /**
      * Renders the global diversity page

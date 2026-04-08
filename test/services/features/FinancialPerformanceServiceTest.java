@@ -50,7 +50,7 @@ public class FinancialPerformanceServiceTest extends WithApplication {
         response = mock(WSResponse.class);
         config = mock(TmdbConfig.class);
 
-        service = new FinancialPerformanceService(ws, config, mock(ActorSystem.class));
+        service = new FinancialPerformanceService(ws, config);
     }
     
     @Override

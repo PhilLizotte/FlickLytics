@@ -1,5 +1,7 @@
 package controllers;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.Test;
 import org.junit.Before;
 import play.Application;
@@ -28,6 +30,7 @@ import models.dto.PersonKnownForPageDTO;
 import models.dto.PersonKnownForStatsDTO;
 import org.mockito.Mockito;
 
+import org.apache.pekko.actor.ActorSystem;
 import org.apache.pekko.actor.typed.*;
 
 import static org.junit.Assert.assertEquals;
@@ -85,8 +88,15 @@ public class TmdbSearchControllerTest extends WithApplication {
                                 .thenReturn(CompletableFuture.completedFuture(dummyMovie));
                 Mockito.when(tmdbSearchService.tvDetails(Mockito.anyInt()))
                                 .thenReturn(CompletableFuture.completedFuture(dummyTvShow));
+
+                ObjectMapper mapper = new ObjectMapper();
+                ObjectNode mockMovie = mapper.createObjectNode();
+                mockMovie.put("id", 42069);
+                mockMovie.put("title", "Sharknado 35");
+                mockMovie.put("budget", 1000);
+                mockMovie.put("revenue", 150000);
                 Mockito.when(financialPerformanceService.getMovieFinances(Mockito.anyInt()))
-                                .thenReturn(CompletableFuture.completedFuture(play.libs.Json.newObject()));
+                                .thenReturn(CompletableFuture.completedFuture(mockMovie));
 
                 PersonKnownForPageDTO dummyKnownForPage = new PersonKnownForPageDTO(
                                 java.util.List.of(new PersonKnownForItemDTO(1, "movie", "Test", "2000-01-01", 1.0, 1.0,
@@ -124,11 +134,8 @@ public class TmdbSearchControllerTest extends WithApplication {
 
         @Test
         public void testFinances() {
-                Http.RequestBuilder request = new Http.RequestBuilder()
-                                .method(GET)
-                                .uri("/finances/11");
-
-                Result result = route(app, request);
+                Result result = route(app,
+                        fakeRequest(GET, "/finances/11"));
                 assertEquals(OK, result.status());
         }
 
@@ -217,7 +224,8 @@ public class TmdbSearchControllerTest extends WithApplication {
         @Before
         public void setup() {
                 GlobalDiversityService service = mock(GlobalDiversityService.class);
-                controller = new TmdbSearchController(null, null, null, null, service, null);
+                ActorSystem actorSystem = ActorSystem.create("test-system");
+                controller = new TmdbSearchController(null, null, null, null, service, null, actorSystem);
         }
 
         @Test
