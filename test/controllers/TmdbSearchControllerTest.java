@@ -22,6 +22,7 @@ import services.features.diversity.GlobalDiversityService;
 import services.features.financial.FinancialPerformanceService;
 import services.features.personstats.PersonStatsService;
 import services.features.readability.ReadabilityService;
+import services.features.reviews.ReviewSentimentService;
 import services.tmdb.TmdbSearchService;
 
 import java.lang.reflect.Field;
@@ -142,6 +143,70 @@ public class TmdbSearchControllerTest extends WithApplication {
         }
 
         // DELIVERY 2 >>>
+
+        /**
+         * Tests the private wsFutureFlow method of TmdbSearchController.
+         * Verifies that it correctly processes a WebSocket request and returns a Flow.
+         * @throws Exception
+         * 
+         * @author Ali Maher
+         */
+        @Test
+        public void wsFutureFlow_invokesAskPath_andReturnsFlowFuture() throws Exception {
+                TmdbSearchService tmdbSearchService = mock(TmdbSearchService.class);
+                FinancialPerformanceService fpService = mock(FinancialPerformanceService.class);
+                PersonStatsService personStatsService = mock(PersonStatsService.class);
+                ReadabilityService readabilityService = mock(ReadabilityService.class);
+                GlobalDiversityService globalDiversityService = mock(GlobalDiversityService.class);
+                ReviewSentimentService reviewSentimentService = mock(ReviewSentimentService.class);
+
+                org.apache.pekko.actor.ActorSystem classicSystem =
+                        org.apache.pekko.actor.ActorSystem.create("TmdbSearchControllerTestSystem");
+
+                try {
+                        TmdbSearchController controller = new TmdbSearchController(
+                                tmdbSearchService,
+                                fpService,
+                                personStatsService,
+                                readabilityService,
+                                globalDiversityService,
+                                reviewSentimentService,
+                                classicSystem
+                        );
+
+                        play.mvc.Http.RequestBuilder rb = new play.mvc.Http.RequestBuilder()
+                                .method("GET")
+                                .uri("/ws")
+                                .header("Origin", "http://localhost:9000");
+
+                        Http.RequestHeader request = rb.build();
+
+                        java.lang.reflect.Method method =
+                                TmdbSearchController.class.getDeclaredMethod("wsFutureFlow", Http.RequestHeader.class);
+                        method.setAccessible(true);
+
+                        @SuppressWarnings("unchecked")
+                        CompletionStage<org.apache.pekko.stream.javadsl.Flow<
+                                com.fasterxml.jackson.databind.JsonNode,
+                                com.fasterxml.jackson.databind.JsonNode,
+                                org.apache.pekko.NotUsed>> stage =
+                                (CompletionStage<org.apache.pekko.stream.javadsl.Flow<
+                                        com.fasterxml.jackson.databind.JsonNode,
+                                        com.fasterxml.jackson.databind.JsonNode,
+                                        org.apache.pekko.NotUsed>>) method.invoke(controller, request);
+
+                        org.apache.pekko.stream.javadsl.Flow<
+                                com.fasterxml.jackson.databind.JsonNode,
+                                com.fasterxml.jackson.databind.JsonNode,
+                                org.apache.pekko.NotUsed> flow =
+                                stage.toCompletableFuture().get(3, java.util.concurrent.TimeUnit.SECONDS);
+
+                        org.junit.Assert.assertNotNull(flow);
+                } finally {
+                        classicSystem.terminate();
+                }
+        }
+
         @Test
         public void testWsFutureFlowExecuted() throws Exception {
                 Http.RequestHeader request = mock(Http.RequestHeader.class);
