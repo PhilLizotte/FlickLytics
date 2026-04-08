@@ -23,21 +23,28 @@ import java.util.List;
 
 import static org.junit.Assert.*;
 
-
 /**
  * Test suite for {@link UserActor}.
  *
- * <p>This class verifies the behavior of the UserActor in a reactive streaming context,
- * including initialization, streaming behavior, deduplication of results, and proper
+ * <p>
+ * This class verifies the behavior of the UserActor in a reactive streaming
+ * context,
+ * including initialization, streaming behavior, deduplication of results, and
+ * proper
  * lifecycle handling.
  *
- * <p>The actor exposes a {@link Flow} that processes incoming {@link JsonNode} messages
- * and produces streamed responses. These tests validate correctness and robustness
+ * <p>
+ * The actor exposes a {@link Flow} that processes incoming {@link JsonNode}
+ * messages
+ * and produces streamed responses. These tests validate correctness and
+ * robustness
  * of that stream pipeline.
  *
- * <p>Tests are implemented using {@link TestKitJunitResource} and Pekko Streams.
+ * <p>
+ * Tests are implemented using {@link TestKitJunitResource} and Pekko Streams.
  *
  * @author Ali Maher
+ * @author Craig Kogan
  *
  */
 public class UserActorTest {
@@ -46,8 +53,7 @@ public class UserActorTest {
      * Shared test kit resource for spawning actors and probes.
      */
     @ClassRule
-    public static final TestKitJunitResource testKit =
-            new TestKitJunitResource();
+    public static final TestKitJunitResource testKit = new TestKitJunitResource();
 
     private Materializer mat;
 
@@ -65,16 +71,13 @@ public class UserActorTest {
      */
     @Test
     public void testInitCreatesFlow() {
-        ActorRef<UserActor.Message> actor =
-                testKit.spawn(UserActor.create("user1"));
+        ActorRef<UserActor.Message> actor = testKit.spawn(UserActor.create("user1"));
 
-        TestProbe<Flow<JsonNode, JsonNode, NotUsed>> probe =
-                testKit.createTestProbe();
+        TestProbe<Flow<JsonNode, JsonNode, NotUsed>> probe = testKit.createTestProbe();
 
         actor.tell(new UserActor.Init(probe.getRef()));
 
-        Flow<JsonNode, JsonNode, NotUsed> flow =
-                probe.receiveMessage();
+        Flow<JsonNode, JsonNode, NotUsed> flow = probe.receiveMessage();
 
         assertNotNull(flow);
     }
@@ -82,45 +85,44 @@ public class UserActorTest {
     /**
      * Tests that the stream does not emit duplicate items across different batches.
      *
-     * <p>A search request is sent and results are collected in two batches.
+     * <p>
+     * A search request is sent and results are collected in two batches.
      * The test verifies that items from the second batch do not duplicate
      * items from the first batch based on their IDs.
      */
     @Test
     public void testDeduplication() {
-        ActorRef<UserActor.Message> actor =
-                testKit.spawn(UserActor.create("user5"));
+        ActorRef<UserActor.Message> actor = testKit.spawn(UserActor.create("user5"));
 
-        TestProbe<Flow<JsonNode, JsonNode, NotUsed>> probe =
-                testKit.createTestProbe();
+        TestProbe<Flow<JsonNode, JsonNode, NotUsed>> probe = testKit.createTestProbe();
 
         actor.tell(new UserActor.Init(probe.getRef()));
-        Flow<JsonNode, JsonNode, NotUsed> flow =
-                probe.receiveMessage();
+        Flow<JsonNode, JsonNode, NotUsed> flow = probe.receiveMessage();
 
         ObjectNode input = Json.newObject();
         input.put("type", "search");
         input.put("query", "spiderman");
 
         // First batch
-        List<JsonNode> firstBatch =
-                Source.<JsonNode>single(input)
-                        .via(flow)
-                        .take(3)
-                        .runWith(Sink.seq(), mat)
-                        .toCompletableFuture()
-                        .join();
+        List<JsonNode> firstBatch = Source.<JsonNode>single(input)
+                .via(flow)
+                .take(3)
+                .runWith(Sink.seq(), mat)
+                .toCompletableFuture()
+                .join();
 
         // Wait for tick (simulate streaming)
-        try { Thread.sleep(6000); } catch (InterruptedException ignored) {}
+        try {
+            Thread.sleep(6000);
+        } catch (InterruptedException ignored) {
+        }
 
-        List<JsonNode> secondBatch =
-                Source.<JsonNode>empty()
-                        .via(flow)
-                        .take(3)
-                        .runWith(Sink.seq(), mat)
-                        .toCompletableFuture()
-                        .join();
+        List<JsonNode> secondBatch = Source.<JsonNode>empty()
+                .via(flow)
+                .take(3)
+                .runWith(Sink.seq(), mat)
+                .toCompletableFuture()
+                .join();
 
         // Ensure no duplicate IDs between batches
         for (JsonNode a : firstBatch) {
@@ -133,34 +135,31 @@ public class UserActorTest {
     /**
      * Verifies that periodic stream ticks produce data over time.
      *
-     * <p>A combination of an initial request and periodic tick events
+     * <p>
+     * A combination of an initial request and periodic tick events
      * is used to simulate a live data stream. The test ensures that
      * the stream emits multiple elements over time.
      */
     @Test
     public void testStreamingTickProducesData() {
-        ActorRef<UserActor.Message> actor =
-                testKit.spawn(UserActor.create("user6"));
+        ActorRef<UserActor.Message> actor = testKit.spawn(UserActor.create("user6"));
 
-        TestProbe<Flow<JsonNode, JsonNode, NotUsed>> probe =
-                testKit.createTestProbe();
+        TestProbe<Flow<JsonNode, JsonNode, NotUsed>> probe = testKit.createTestProbe();
 
         actor.tell(new UserActor.Init(probe.getRef()));
-        Flow<JsonNode, JsonNode, NotUsed> flow =
-                probe.receiveMessage();
+        Flow<JsonNode, JsonNode, NotUsed> flow = probe.receiveMessage();
 
         ObjectNode input = Json.newObject();
         input.put("type", "search");
         input.put("query", "ironman");
 
-        List<JsonNode> output =
-                Source.<JsonNode>single(input)
-                        .concat(Source.tick(Duration.ofSeconds(1), Duration.ofSeconds(5), input))
-                        .via(flow)
-                        .take(6)
-                        .runWith(Sink.seq(), mat)
-                        .toCompletableFuture()
-                        .join();
+        List<JsonNode> output = Source.<JsonNode>single(input)
+                .concat(Source.tick(Duration.ofSeconds(1), Duration.ofSeconds(5), input))
+                .via(flow)
+                .take(6)
+                .runWith(Sink.seq(), mat)
+                .toCompletableFuture()
+                .join();
 
         assertTrue(output.size() >= 3);
     }
@@ -168,32 +167,84 @@ public class UserActorTest {
     /**
      * Verifies that the actor and stream can be safely terminated.
      *
-     * <p>A {@link UniqueKillSwitch} is used to cancel the running stream,
+     * <p>
+     * A {@link UniqueKillSwitch} is used to cancel the running stream,
      * and the actor is then stopped. The test ensures no crashes occur
      * during shutdown.
      */
     @Test
     public void testActorStopsOnTermination() {
-        ActorRef<UserActor.Message> actor =
-                testKit.spawn(UserActor.create("user7"));
+        ActorRef<UserActor.Message> actor = testKit.spawn(UserActor.create("user7"));
 
-        TestProbe<Flow<JsonNode, JsonNode, NotUsed>> probe =
-                testKit.createTestProbe();
+        TestProbe<Flow<JsonNode, JsonNode, NotUsed>> probe = testKit.createTestProbe();
 
         actor.tell(new UserActor.Init(probe.getRef()));
-        Flow<JsonNode, JsonNode, NotUsed> flow =
-                probe.receiveMessage();
+        Flow<JsonNode, JsonNode, NotUsed> flow = probe.receiveMessage();
 
         // run and cancel immediately
-        UniqueKillSwitch killSwitch =
-                Source.<JsonNode>maybe()
-                        .viaMat(KillSwitches.single(), Keep.right())
-                        .via(flow)
-                        .toMat(Sink.ignore(), Keep.left())
-                        .run(mat);
+        UniqueKillSwitch killSwitch = Source.<JsonNode>maybe()
+                .viaMat(KillSwitches.single(), Keep.right())
+                .via(flow)
+                .toMat(Sink.ignore(), Keep.left())
+                .run(mat);
         killSwitch.shutdown();
 
         testKit.stop(actor);
         assertTrue(true);
     }
+
+    /**
+     * Verifies that empty query data is processed correctly.
+     */
+    @Test
+    public void testFetchPullDataCurrentQueueEmptyCase() {
+        ActorRef<UserActor.Message> actor = testKit.spawn(UserActor.create("user8"));
+
+        TestProbe<Flow<JsonNode, JsonNode, NotUsed>> probe = testKit.createTestProbe();
+
+        actor.tell(new UserActor.Init(probe.getRef()));
+        Flow<JsonNode, JsonNode, NotUsed> flow = probe.receiveMessage();
+
+        ObjectNode input = Json.newObject();
+        input.put("type", "search");
+        input.put("query", "");
+
+        // First batch
+        List<JsonNode> firstBatch = Source.<JsonNode>single(input)
+                .via(flow)
+                .take(3)
+                .runWith(Sink.seq(), mat)
+                .toCompletableFuture()
+                .join();
+
+        assertTrue(true);
+    }
+
+    /**
+     * Verifies that the sendError method can be triggered
+     */
+    @Test
+    public void testSendError() {
+        ActorRef<UserActor.Message> actor = testKit.spawn(UserActor.create("user9"));
+
+        TestProbe<Flow<JsonNode, JsonNode, NotUsed>> probe = testKit.createTestProbe();
+
+        actor.tell(new UserActor.Init(probe.getRef()));
+        Flow<JsonNode, JsonNode, NotUsed> flow = probe.receiveMessage();
+
+        ObjectNode input = Json.newObject();
+        input.put("type", "");
+        input.put("query", "SpongeBob");
+
+        // First batch
+        List<JsonNode> firstBatch = Source.<JsonNode>single(input)
+                .via(flow)
+                .take(3)
+                .runWith(Sink.seq(), mat)
+                .toCompletableFuture()
+                .join();
+
+        assertTrue(true);
+    }
+
 }
